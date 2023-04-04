@@ -80,52 +80,7 @@ myCorpus <- Corpus(VectorSource(mm))
 userfollower <- DocumentTermMatrix(myCorpus, control = list(wordLengths = c(0, Inf)))
 
 ## We can also look at the actual matrix
-inspect(userfollower)
-
-## Compute the adjacency matrix using matrix multiplication.
-A <- t(as.matrix(userfollower)) %*% as.matrix(userfollower) #Error: cannot allocate vector of size 96.3 Gb
-
-## Look at its dimensions
-dim(A)
-
-## Create a graph object based on the adjacency matrix & remove loop edges
-g <- graph.adjacency(A, weighted=TRUE,
-                     mode ='undirected') %>% simplify()
-
-## Set labels and degrees of vertices
-V(g)$label <- V(g)$name
-V(g)$degree <- igraph::degree(g)
-## Plot the Graph
-set.seed(3952)
-## Prepare graph
-layout <- layout.auto(g)
-## Give the graph lots of room
-
-mar <- par()$mar ## Store this for later
-par(mar=rep(0, 4))
-plot(g, layout=layout, vertex.label=NA,
-     edge.curved=TRUE,vertex.size=3,
-     vertex.color=c("green","red","blue")[ifelse(V(g)$name %in%
-                                                   names(igraph::degree(g)[tail(order(igraph::degree(g)),5)]) ==TRUE,1,
-                                                 ifelse(V(g)$name %in%
-                                                          names(igraph::degree(g)[tail(order(igraph::betweenness(g)),10)]) ==TRUE,2,3))])
-
-
-##############################################
-## Step 4: compute degree for all followers ##
-##############################################
-
-## Sort network based on degree
-groundtruth_sorted <- V(g)[order(V(g)$degree, decreasing = T)]
-
-## Make dataframe
-groundtruth_df <- data.frame(vertex_names = groundtruth_sorted$label, vertex_degree = groundtruth_sorted$degree)
-
-## Save the groundtruth as "groundtruth_df"
-rlist::list.save(groundtruth_df, file = "groundtruth_df.RData")
-
-## Load the data by using the command:
-groundtruth_df <- rlist::list.load("groundtruth_df.RData")
+inspect(userfollower)   ##problem here length 6
 
 ## Create an adjacency matrix with 1/0 links between rows
 adj_matrix <- matrix(nrow = nrow(userfollower), ncol = nrow(userfollower))
@@ -139,9 +94,14 @@ for (i in 1:nrow(adj_matrix)) {
   }
 }
 
+##############################################
+## Step 4: compute degree for all followers ##
+##############################################
+
 ## Convert the adjacency matrix to a data frame and set the row and column names
 df <- data.frame(adj_matrix)
-colnames(df) <- rownames(df) <- names(userfollower)
+colnames(df) <- names(userfollower)
+rownames(df) <- names(userfollower)
 
 ## Calculate the degree of each user in the network
 degree <- rowSums(df)
