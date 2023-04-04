@@ -94,6 +94,9 @@ for (i in 1:nrow(adj_matrix)) {
   }
 }
 
+## Save the adjecency matrix as "adj_matrix"
+save(adj_matrix, file = "adj_matrix.RData")
+
 ##############################################
 ## Step 4: compute degree for all followers ##
 ##############################################
