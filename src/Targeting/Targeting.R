@@ -34,6 +34,15 @@ firstdegree <- get_account_followers(
   retryonratelimit = TRUE
 )
 
+## Save the data as "firstdegree"
+save(firstdegree, file = "firstdegree.RData")
+
+## Load the data by using the command:
+load("firstdegree.RData")
+
+## Access the loaded data using the saved variable name:
+firstdegree
+
 ########################################
 ## Step 2: get followers of followers ##
 ########################################
@@ -96,6 +105,12 @@ for (i in 1:nrow(adj_matrix)) {
 
 ## Save the adjecency matrix as "adj_matrix"
 save(adj_matrix, file = "adj_matrix.RData")
+
+## Load the data by using the command:
+load("adj_matrix.RData")
+
+## Access the loaded data using the saved variable name:
+adj_matrix
 
 ##############################################
 ## Step 4: compute degree for all followers ##
