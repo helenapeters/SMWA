@@ -51,18 +51,11 @@ for (i in 1:nrow(firstdegree)) {
 ## Let's add the first degree followers to that list
 seconddegreefollowers[[length(seconddegreefollowers)+1]] <- firstdegree
 
-## Save the data as"network" so we don't have to scrape anymore.
-rlist::list.save(seconddegreefollowers, file = "network.RData") 
+## Save the data as "network"
+rlist::list.save(seconddegreefollowers, file = "network.RData") # It takes too long to scrape everytime
 
-## If you wish to load the data use the command
-#rlist::list.load("netwerk.RData") so eg:
+## Load the data by using the command:
 seconddegreefollowers <- rlist::list.load("network.RData")
-
-
-## Transform that list to a character vector of length 5
-## Each element in the vector contains all the followers of a user
-
-mm <- do.call("c", lapply(seconddegreefollowers, paste, collapse=" "))
 
 #####################################
 ## Step 3: create adjacency matrix ##
@@ -71,11 +64,16 @@ mm <- do.call("c", lapply(seconddegreefollowers, paste, collapse=" "))
 ## Install and load the text mining package to preprocess the data
 p_load(SnowballC, tm, igraph)
 
+## Transform the list to a character vector
+## Each element in the vector contains all the followers of a user
+
+mm <- do.call("c", lapply(seconddegreefollowers, paste, collapse=" "))
+
 ## Transform that vector using the tm package to structure the unstructured data
 myCorpus <- Corpus(VectorSource(mm))
 
 ## Inspect the result
-inspect(myCorpus)
+#inspect(myCorpus) # Takes long to run
 
 ## This creates a matrix, in which the rows are our followers and the columns are followers of followers
 ## This thus resembles an incidence matrix
@@ -85,7 +83,7 @@ userfollower <- DocumentTermMatrix(myCorpus, control = list(wordLengths = c(0, I
 inspect(userfollower)
 
 ## Compute the adjacency matrix using matrix multiplication.
-A <- t(as.matrix(userfollower)) %*% as.matrix(userfollower)
+A <- t(as.matrix(userfollower)) %*% as.matrix(userfollower) #Error: cannot allocate vector of size 96.3 Gb
 
 ## Look at its dimensions
 dim(A)
@@ -117,9 +115,50 @@ plot(g, layout=layout, vertex.label=NA,
 ## Step 4: compute degree for all followers ##
 ##############################################
 
+## Sort network based on degree
+groundtruth_sorted <- V(g)[order(V(g)$degree, decreasing = T)]
+
+## Make dataframe
+groundtruth_df <- data.frame(vertex_names = groundtruth_sorted$label, vertex_degree = groundtruth_sorted$degree)
+
+## Save the groundtruth as "groundtruth_df"
+rlist::list.save(groundtruth_df, file = "groundtruth_df.RData")
+
+## Load the data by using the command:
+groundtruth_df <- rlist::list.load("groundtruth_df.RData")
+
+## Create an adjacency matrix with 1/0 links between rows
+adj_matrix <- matrix(nrow = nrow(userfollower), ncol = nrow(userfollower))
+
+## Set the elements of the adjacency matrix based on whether the column user follows the row user
+for (i in 1:nrow(adj_matrix)) {
+  row_user <- names(userfollower)[i]
+  for (j in 1:ncol(adj_matrix)) {
+    col_user <- names(userfollower)[j]
+    adj_matrix[i, j] <- as.numeric(col_user %in% userfollower[[row_user]])
+  }
+}
+
+## Convert the adjacency matrix to a data frame and set the row and column names
+df <- data.frame(adj_matrix)
+colnames(df) <- rownames(df) <- names(userfollower)
+
+## Calculate the degree of each user in the network
+degree <- rowSums(df)
+
 ##################################################
 ## Step 5: rank followers based on their degree ##
 ##################################################
+
+## Create a data frame with the user names and their degrees, sorted by degree in decreasing order
+groundtruth_df_users <- data.frame(vertex_names = rownames(df), vertex_degree = degree)
+groundtruth_df_users <- groundtruth_df_users[order(-degree),]
+
+## Rename the columns in the data frame
+colnames(groundtruth_df_users) <- c('vertex_names', 'vertex_degree')
+
+## Save the groundtruth as "groundtruth_df_users"
+rlist::list.save(groundtruth_df_users, file = "groundtruth_df_users.RData")
 
 ##################################################################
 ############################# PART 2 #############################
