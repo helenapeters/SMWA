@@ -38,20 +38,12 @@ firstdegree <- get_account_followers(
 ## Step 2: get followers of followers ##
 ########################################
 
-seconddegree <- list()
-for (i in 1:length(firstdegree)) ##nrow instead of length?
-  seconddegree[[i]] <- search_accounts(firstdegree$username[i])[1, ]
-seconddegree <- bind_rows(seconddegree)
-
-## This should be 374:
-nrow(seconddegree)  ##not correct!
-
-## Now extract the followers-of-followers
+## Get followers of followers
 seconddegreefollowers <- list()
-for (i in 1:nrow(seconddegree)) {
-  cat('... Scraping: ', seconddegree$username[i], '\n')
+for (i in 1:nrow(firstdegree)) {
+  cat('... Scraping: ', firstdegree$username[i], '\n')
   seconddegreefollowers[[i]] <- get_account_followers(
-    seconddegree$id[i], limit = seconddegree$followers_count[i], retryonratelimit = TRUE
+    firstdegree$id[i], limit = firstdegree$followers_count[i], retryonratelimit = TRUE
   )
 }
 
@@ -59,19 +51,18 @@ for (i in 1:nrow(seconddegree)) {
 ## Let's add the first degree followers to that list
 seconddegreefollowers[[length(seconddegreefollowers)+1]] <- firstdegree
 
-## Let's extract all the usernames of the followers
-followers <- list()
-for (i in 1:length(seconddegreefollowers))
-  followers[[i]] <- seconddegreefollowers[[i]] %>% pull(username)  #Fout bij username
-names(followers) <- c(seconddegree$username,orvaline$username)
+## Save the data as"network" so we don't have to scrape anymore.
+rlist::list.save(seconddegreefollowers, file = "network.RData") 
 
-## Let's have a look
-glimpse(followers)
+## If you wish to load the data use the command
+#rlist::list.load("netwerk.RData") so eg:
+seconddegreefollowers <- rlist::list.load("network.RData")
+
 
 ## Transform that list to a character vector of length 5
 ## Each element in the vector contains all the followers of a user
 
-mm <- do.call("c", lapply(followers, paste, collapse=" "))
+mm <- do.call("c", lapply(seconddegreefollowers, paste, collapse=" "))
 
 #####################################
 ## Step 3: create adjacency matrix ##
@@ -86,7 +77,7 @@ myCorpus <- Corpus(VectorSource(mm))
 ## Inspect the result
 inspect(myCorpus)
 
-## This creates a matrix, in which the rows are our sources of interest and the columns are the friends
+## This creates a matrix, in which the rows are our followers and the columns are followers of followers
 ## This thus resembles an incidence matrix
 userfollower <- DocumentTermMatrix(myCorpus, control = list(wordLengths = c(0, Inf)))
 
