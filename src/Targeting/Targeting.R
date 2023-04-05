@@ -141,3 +141,65 @@ rlist::list.save(groundtruth_df_users, file = "groundtruth_df_users.RData")
 ##################################################################
 ############################# PART 2 #############################
 ##################################################################
+
+##############################################
+## Step 1: get all followers of orvaline    ##
+##############################################
+load("firstdegree.RData")
+firstdegree
+
+##############################################
+## Step 2: get all followers of followers   ##
+##############################################
+load("seconddegreefollowers.RData")
+seconddegreefollowers
+
+##############################################
+## Step 3: for each follower of follower    ##
+##    - compute adj matrix                  ##
+##    - compute degree of followers         ##
+##    - rank followers based on degree      ##
+##    - compute Spearman's correlation      ##
+##############################################
+
+## Create data frame that will store the results of the correlation calculations
+results <- data.frame(matrix(NA, nrow = (nrow(userfollower) - 1), ncol = 2))
+colnames(results) <- c("followers_of_followers", "spearman_correlation")
+
+for (i in 2:(nrow(userfollower) - 1)) {
+  # Compute adjacency matrix A using i followers-of-followers
+  A <- matrix(nrow = nrow(userfollower), ncol = nrow(userfollower))
+  for (j in 1:nrow(userfollower)) {
+    followers <- userfollower[j, ]
+    for (k in 1:i) {
+      followers <- unique(c(followers, unlist(userfollower[followers, ])))
+    }
+    A[j, followers] <- 1
+  }
+  
+  # Convert A to data frame and set column names
+  df <- as.data.frame(A)
+  colnames(df) <- names(userfollower)
+  
+  # Compute the degree for all your followers
+  degree <- sna::degree(df)
+  
+  # Rank all your followers based on their degree and store in current ranking
+  current_ranking <- data.frame(vertex_names = names(degree), vertex_degree = degree)
+  current_ranking <- current_ranking[order(-current_ranking$vertex_degree), ]
+  
+  # Compute Spearman's rank-based correlation
+  spearman_correlation <- cor(groundtruth_df_users$vertex_degree, current_ranking$vertex_degree, method = "spearman")
+  
+  # Store both i and correlation
+  results[i - 1, 1] <- i
+  results[i - 1, 2] <- spearman_correlation
+}
+
+#######################################################
+## Step 4: plot follower-of-follower and correlation ##
+#######################################################
+
+plot(results$followers_of_followers, results$spearman_correlation, type = "l",
+     xlab = "Size of network used to compute degree", ylab = "Rank-based correlation")
+
