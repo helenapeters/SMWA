@@ -171,6 +171,67 @@ seconddegreefollowers
 ##    - compute Spearman's correlation      ##
 ##############################################
 
+#function that creates adj matrix using N follower-of-followers
+compute_adj_matrix <- function(N){
+  basic_adj_matrix <- seconddegreefollowers
+  
+  mm <- do.call("c", lapply(basic_adj_matrix, paste, collapse=" "))
+  myCorpus <- Corpus(VectorSource(mm))
+  userfollower <- DocumentTermMatrix(myCorpus, control = list(wordLengths = c(0, Inf)))
+  B <- t(as.matrix(userfollower)) %*% as.matrix(userfollower)
+  
+  #substract usernames
+  followers_of_followers_names <- colnames(B)
+  
+  # nieuwe vector vec nodig om uit te sampelen
+  vec <- 1:length(followers_of_followers_names)
+  vec <- vec[ -followers_idx ]
+  
+  # sample N random indices out of the remaining list of indices
+  random_sample <- sample(vec, size = N)
+  ind_sample_adjacency <- c( followers_idx, random_sample)
+  
+  return( B[ind_sample_adjacency, ind_sample_adjacency] )
+}
+
+storage <- data.frame()
+
+
+for (i in 2:(length(degree_of_all)-length(followers_idx))) {
+  print( i )
+  # with degree_of_all equal to the number of follower-of-followers
+  
+  # compute adjacency matrix A using i followers-of-followers
+  mat <- compute_adjacency_matrix(i)
+  
+  # compute the degree for all your followers
+  degree_everyone <- degree(network(mat), gmode="graph")
+  
+  followers_degree <- degree_everyone[1:length(followers_idx)]
+  
+  current_ranking <- data.frame( 
+    user = followers, 
+    degree = followers_degree
+  )
+  current_ranking$rank <- rank(current_ranking$degree)
+  
+  
+  # compute spearman's rank-based correlation
+  correlation = cor(ground_truth$ground_truth_rank, current_ranking$rank, method="spearman")
+  
+  # store both i and correlation
+  frame = data.frame( iteration=i, correlation = correlation)
+  storage <- rbind(storage, frame)
+}
+
+
+
 #######################################################
 ## Step 4: plot follower-of-follower and correlation ##
 #######################################################
+p_load(tidyverse)
+
+ggplot(data = storage, aes(x = iteration, y = correlation)) +
+  geom_point() +
+  labs(x="Network Size", y="Spearman's rank-based correlation")
+
