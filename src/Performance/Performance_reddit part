@@ -11,20 +11,28 @@ library(httr)
 btc <- jsonlite::fromJSON('https://www.reddit.com/r/Bitcoin/.json')
 btc2 <- jsonlite::fromJSON('https://www.reddit.com/r/coding/.json')
 
+amile <- jsonlite::fromJSON('https://www.reddit.com/r/amelielens/.json')
+
 #In order to do this we want to declare a variable (in this case df1),
 #we want to get that dataset in that list by using the $ in between the names stated above, below is exactly how to do this
 
 df1 <- btc$data$children$data
 df2 <- btc2$data$children$data
 
+df3 <-amile$data$children$data
 
 #Now let’s say we wanted to take only a few of the column names, well first we want to see which columns we want to take out, 
 #in this case I want to extract the ups, title, subreddit and url column names, to do this we do the following
 new1 = df1[ ,c('ups', 'title', 'subreddit', 'url')]
 new2 = df2[ ,c('ups', 'title', 'subreddit', 'url')]
 
+new3 = df3[ ,c('ups', 'title', 'subreddit', 'url')]
+
 alldata <- rbind(new1, new2)
 
 alldatasorted <-alldata[order(-alldata$ups),]
+
+amiledata <- rbind(new3)
+amiledatasorted <-amiledata[order(-alldata$ups),]
 
 #https://preettheman.medium.com/lets-scrape-reddit-data-in-r-ac304860f790
