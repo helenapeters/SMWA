@@ -1,0 +1,10 @@
+install.packages("tuber")
+install.packages('https')
+library(tuber)
+myclientid='24403699099-gvcon4ph9qbvotffogimd6fg932m1t6f.apps.googleusercontent.com'
+clientsecret='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'
+yt_oauth(myclientid,clientsecret,token="")
+#↑just log in
+#get all comments for the youtube video, maybe need a for loop to get the codes for the videos?
+#i'm not pretty sure,anybody can help me?
+lastcommentseng1=get_all_comments('mfD0FY9oHGc')
