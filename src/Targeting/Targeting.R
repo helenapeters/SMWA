@@ -7,7 +7,7 @@ rm(list=ls())
 
 ## Install and load packages
 if (!require("pacman")) install.packages("pacman", quiet=TRUE) ; require("pacman")
-p_load(rtoot, httpuv, tidyverse, lubridate)
+p_load(rtoot, httpuv, tidyverse, lubridate, statnet, igraph)
 
 ## Set working directory
 setwd("C:/Users/Helena/Documents/eerste_master/SMWA/Project_test/data_scrape")
@@ -20,17 +20,17 @@ setwd("C:/Users/Helena/Documents/eerste_master/SMWA/Project_test/data_scrape")
 ## Only need to run this once
 #auth_setup()
 
-## Look up the account for Orvaline and look at the best match
-my_name <- "Orvaline"
-orvaline <- search_accounts(my_name)[1, ]
+## Look up the account for h4oxer and look at the best match
+my_name <- "h4oxer"
+h4oxer <- search_accounts(my_name)[1, ]
 
 ## This results in a account object with all kinds of information
-glimpse(orvaline)
+glimpse(h4oxer)
 
-# ## Retrieve all her followers
+# ## Retrieve all his followers
 # firstdegree <- get_account_followers(
-#   orvaline$id,
-#   limit = orvaline$followers_count,
+#   h4oxer$id,
+#   limit = h4oxer$followers_count,
 #   retryonratelimit = TRUE
 # )
 # 
@@ -89,19 +89,10 @@ myCorpus <- Corpus(VectorSource(mm))
 userfollower <- DocumentTermMatrix(myCorpus, control = list(wordLengths = c(0, Inf)))
 
 ## We can also look at the actual matrix
-inspect(userfollower)   ##problem here length 6
+inspect(userfollower)  
 
-# ## Create an adjacency matrix with 1/0 links between rows
-# adj_matrix <- matrix(nrow = nrow(userfollower), ncol = nrow(userfollower))
-# 
-# ## Set the elements of the adjacency matrix based on whether the column user follows the row user
-# for (i in 1:nrow(adj_matrix)) {
-#   row_user <- names(userfollower)[i]
-#   for (j in 1:ncol(adj_matrix)) {
-#     col_user <- names(userfollower)[j]
-#     adj_matrix[i, j] <- as.numeric(col_user %in% userfollower[[row_user]])
-#   }
-# }
+# ## Make an adjacency matrix:
+# adj_matrix <- t(as.matrix(userfollower)) %*% as.matrix(userfollower)
 # 
 # ## Save the adjecency matrix as "adj_matrix"
 # save(adj_matrix, file = "adj_matrix.RData")
@@ -109,34 +100,42 @@ inspect(userfollower)   ##problem here length 6
 ## Load the data by using the command:
 load("adj_matrix.RData")
 
-## Access the loaded data using the saved variable name:
-adj_matrix
+# ## Access the loaded data using the saved variable name:
+# adj_matrix
+
+## Transform to network object
+net <- network(adj_matrix)
+
+## Save the network object as "net"
+save(net, file = "net.RData")
+
+## Load the data by using the command:
+load("net.RData")
 
 ##############################################
 ## Step 4: compute degree for all followers ##
 ##############################################
 
-## Convert the adjacency matrix to a data frame and set the row and column names
-df <- data.frame(adj_matrix)
-colnames(df) <- names(userfollower)
-rownames(df) <- names(userfollower)
+## Calculate the degree of all nodes in the network
+degree_of_all <- degree(net, mode = "all")
 
-## Calculate the degree of each user in the network
-degree <- rowSums(df)
+## Extract the degree of only the followers in the seconddegreefollowers data frame
+followers_idx <- match(tolower(seconddegreefollowers$screen_name), tolower(colnames(A)))
+fol_degree <- degree_of_all[followers_idx]
 
 ##################################################
 ## Step 5: rank followers based on their degree ##
 ##################################################
 
-## Create a data frame with the user names and their degrees, sorted by degree in decreasing order
-groundtruth_df_users <- data.frame(vertex_names = rownames(df), vertex_degree = degree)
-groundtruth_df_users <- groundtruth_df_users[order(-degree),]
+## Create a data frame with the user names, degree, and ground truth rank
+ground_truth <- data.frame(user = seconddegree$screen_name, degree = fol_degree)
+ground_truth$ground_truth_rank <- rank(fol_degree)
 
-## Rename the columns in the data frame
-colnames(groundtruth_df_users) <- c('vertex_names', 'vertex_degree')
+## Save the groundtruth as "ground_truth"
+rlist::list.save(ground_truth, file = "ground_truth.RData")
 
-## Save the groundtruth as "groundtruth_df_users"
-rlist::list.save(groundtruth_df_users, file = "groundtruth_df_users.RData")
+## Load the data by using the command:
+ground_truth <- rlist::list.load("ground_truth.RData")
 
 ##################################################################
 ############################# PART 2 #############################
