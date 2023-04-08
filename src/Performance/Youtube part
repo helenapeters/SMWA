@@ -29,3 +29,11 @@ res <- lapply(vid_ids, get_all_stats)
 res_df <- do.call(rbind, lapply(res, data.frame))
 
 head(res_df)
+
+# comments Lux Aeterna, 
+lastcommentsLuxAererna=get_all_comments('_u-7rWKnVVo')
+# comments If Darkness Had A Son 
+lastcommentsIfDarknessHadASon=get_all_comments('x_t53a5Ons0')
+# comments 72 seasons 
+lastcommentsSeventyTwoSeasons=get_all_comments('1OeC9CGtWcM')
+
