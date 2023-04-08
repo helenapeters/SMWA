@@ -7,10 +7,10 @@ rm(list=ls())
 
 ## Install and load packages
 if (!require("pacman")) install.packages("pacman", quiet=TRUE) ; require("pacman")
-p_load(rtoot, httpuv, tidyverse, lubridate, statnet, igraph)
+p_load(rtoot, httpuv, tidyverse, lubridate)
 
 ## Set working directory
-setwd("C:/Users/Helena/Documents/eerste_master/SMWA/Project_test/data_scrape")
+setwd("C:/Users/irisc/OneDrive/Documenten/GitHub/SMWA/src/Targeting")
 
 ###########################
 ## Step 1: get followers ##
@@ -18,24 +18,24 @@ setwd("C:/Users/Helena/Documents/eerste_master/SMWA/Project_test/data_scrape")
 
 ## Set up authentication
 ## Only need to run this once
-#auth_setup()
+auth_setup()
 
-## Look up the account for h4oxer and look at the best match
-my_name <- "h4oxer"
-h4oxer <- search_accounts(my_name)[1, ]
+## Look up the account for Orvaline and look at the best match
+my_name <- "Orvaline"
+orvaline <- search_accounts(my_name)[1, ]
 
 ## This results in a account object with all kinds of information
-glimpse(h4oxer)
+glimpse(orvaline)
 
-# ## Retrieve all his followers
-# firstdegree <- get_account_followers(
-#   h4oxer$id,
-#   limit = h4oxer$followers_count,
-#   retryonratelimit = TRUE
-# )
-# 
-# ## Save the data as "firstdegree"
-# save(firstdegree, file = "firstdegree.RData")
+## Retrieve all her followers
+firstdegree <- get_account_followers(
+  orvaline$id,
+  limit = orvaline$followers_count,
+  retryonratelimit = TRUE
+)
+
+## Save the data as "firstdegree"
+save(firstdegree, file = "firstdegree.RData")
 
 ## Load the data by using the command:
 load("firstdegree.RData")
@@ -47,24 +47,41 @@ firstdegree
 ## Step 2: get followers of followers ##
 ########################################
 
-# ## Get followers of followers
-# seconddegreefollowers <- list()
-# for (i in 1:nrow(firstdegree)) {
-#   cat('... Scraping: ', firstdegree$username[i], '\n')
-#   seconddegreefollowers[[i]] <- get_account_followers(
-#     firstdegree$id[i], limit = firstdegree$followers_count[i], retryonratelimit = TRUE
-#   )
-# }
-# 
-# ## Now we have all the followers of followers
-# ## Let's add the first degree followers to that list
-# seconddegreefollowers[[length(seconddegreefollowers)+1]] <- firstdegree
-# 
-# ## Save the data as "network"
-# rlist::list.save(seconddegreefollowers, file = "network.RData") # It takes too long to scrape everytime
+## Get followers of followers
+seconddegreefollowers <- list()
+#l <- list()
+for (i in 1:nrow(firstdegree)) {
+  cat('... Scraping: ', firstdegree$username[i], '\n')
+  seconddegreefollowers[[i]] <- get_account_followers(
+    firstdegree$id[i], limit = firstdegree$followers_count[i], retryonratelimit = TRUE
+  )
+  #l[[i]] <- seconddegreefollowers[[i]] %>% pull(username)
+}
+
+## Now we have all the followers of followers
+## Let's add the first degree followers to that list
+seconddegreefollowers[[length(seconddegreefollowers)+1]] <- firstdegree
+
+## Save the data as "firstdegree"
+save(seconddegreefollowers, file = "seconddegreefollowers.RData")
 
 ## Load the data by using the command:
-seconddegreefollowers <- rlist::list.load("network.RData")
+load("seconddegreefollowers.RData")
+
+## Access the loaded data using the saved variable name:
+seconddegreefollowers
+
+# let's extract all the usernames of the followers
+followers <- list()
+for (i in 1:length(seconddegreefollowers)){
+  tryCatch({
+    followers[[i]] <- seconddegreefollowers[[i]] %>% pull(username)
+  }, error=function(e){})
+}
+names(followers) <- c(firstdegree$username,orvaline$username)
+
+#let's have a look
+glimpse(followers)
 
 #####################################
 ## Step 3: create adjacency matrix ##
@@ -76,35 +93,31 @@ p_load(SnowballC, tm, igraph)
 ## Transform the list to a character vector
 ## Each element in the vector contains all the followers of a user
 
-mm <- do.call("c", lapply(seconddegreefollowers, paste, collapse=" "))
+mm <- do.call("c", lapply(followers, paste, collapse=" "))
 
 ## Transform that vector using the tm package to structure the unstructured data
 myCorpus <- Corpus(VectorSource(mm))
 
 ## Inspect the result
-#inspect(myCorpus) # Takes long to run
+inspect(myCorpus) # Takes long to run
 
 ## This creates a matrix, in which the rows are our followers and the columns are followers of followers
 ## This thus resembles an incidence matrix
 userfollower <- DocumentTermMatrix(myCorpus, control = list(wordLengths = c(0, Inf)))
 
 ## We can also look at the actual matrix
-inspect(userfollower)  
+inspect(userfollower) 
 
-# ## Make an adjacency matrix:
-# adj_matrix <- t(as.matrix(userfollower)) %*% as.matrix(userfollower)
-# 
-# ## Save the adjecency matrix as "adj_matrix"
-# save(adj_matrix, file = "adj_matrix.RData")
+## create adjacency matrix
+p_load(igraph)
+A <- t(as.matrix(userfollower)) %*% as.matrix(userfollower) #error: cannot allocate vector of size 58.0 Gb
 
-## Load the data by using the command:
-load("adj_matrix.RData")
+## matrix A might be too large
+if (ncol(A) > 500) A <- A[1:500,1:500]
 
-# ## Access the loaded data using the saved variable name:
-# adj_matrix
-
-## Transform to network object
-net <- network(adj_matrix)
+#make a network object
+p_load(statnet)
+net <- network(A, matrix.type="adjacency")
 
 ## Save the network object as "net"
 save(net, file = "net.RData")
