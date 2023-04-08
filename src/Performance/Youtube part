@@ -34,3 +34,57 @@ res_df <- do.call(rbind, lapply(res, data.frame))
 
 head(res_df)
 >>>>>>> parent of 0377b0c (Merge branch 'main' of https://github.com/helenapeters/SMWA)
+
+
+
+========================================================================
+==================         wordcloudpart      ==========================
+========================================================================
+
+
+if (!require("pacman")) install.packages("pacman") ; require("pacman")
+p_load(tidyverse,SnowballC, slam, tm,tictoc,qdap)
+p_load(udpipe,textplot,ggraph,tidytext,wordcloud,wordcloud2)
+
+# Load the required libraries
+library(tm)
+library(SnowballC)
+
+# Create a corpus of documents
+docs <- lastcommentseng1
+
+# Create a corpus using the TextDocument function from the tm package
+corpus <- Corpus(VectorSource(docs))
+
+# Clean and preprocess the corpus
+corpus <- tm_map(corpus, content_transformer(tolower)) # Convert to lowercase
+corpus <- tm_map(corpus, removePunctuation) # Remove punctuation
+corpus <- tm_map(corpus, removeNumbers) # Remove numbers
+corpus <- tm_map(corpus, removeWords, stopwords("english")) # Remove stopwords
+corpus <- tm_map(corpus, stemDocument, language = "english") # Stem the words
+
+# Create a document term matrix
+dtm <- DocumentTermMatrix(corpus)
+
+# Get the frequency of each term in the corpus
+freq <- colSums(as.matrix(dtm))
+
+# Sort the terms by frequency
+freq <- sort(freq, decreasing = TRUE)
+
+# Print the top 10 terms
+head(freq, 10)
+
+tdm <- TermDocumentMatrix(Corpus(VectorSource(corpus)))
+m <- as.matrix(tdm)
+v <- sort(rowSums(m),decreasing=TRUE)
+d <- tibble(word = names(v),freq=v) #or: data.frame(word = names(v),freq=v) 
+
+#using the dplyr to delete the meaningless names
+p_load(dplyr)
+library(dplyr)
+d <- d %>% filter(!(word %in% c("metallica", "song",'album')))
+
+wordcloud2(d)
+
+
