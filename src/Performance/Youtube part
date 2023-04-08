@@ -7,33 +7,5 @@ yt_oauth(myclientid,clientsecret,token="")
 #↑just log in
 #get all comments for the youtube video, maybe need a for loop to get the codes for the videos?
 #i'm not pretty sure,anybody can help me?
-lastcommentseng1=get_all_comments('mfD0FY9oHGc')
-a <- list_channel_resources(filter = c(channel_id = "UCbulh9WdLtEXiooRcYK7SWw"), part="contentDetails")
-
-# Uploaded playlists:
-playlist_id <- a$items[[1]]$contentDetails$relatedPlaylists$uploads
-
-# Get videos on the playlist
-vids <- get_playlist_items(filter= c(playlist_id=playlist_id)) 
-
-# Video ids
-vid_ids <- as.vector(vids$contentDetails.videoId)
-
-# Function to scrape stats for all vids
-get_all_stats <- function(id) {
-  get_stats(id)
-} 
-
-# Get stats and convert results to data frame 
-res <- lapply(vid_ids, get_all_stats)
-res_df <- do.call(rbind, lapply(res, data.frame))
-
-head(res_df)
-
-# comments Lux Aeterna, 
-lastcommentsLuxAererna=get_all_comments('_u-7rWKnVVo')
-# comments If Darkness Had A Son 
-lastcommentsIfDarknessHadASon=get_all_comments('x_t53a5Ons0')
-# comments 72 seasons 
-lastcommentsSeventyTwoSeasons=get_all_comments('1OeC9CGtWcM')
+lastcommentseng1=get_all_comments('1OeC9CGtWcM')
 
