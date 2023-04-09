@@ -110,7 +110,7 @@ inspect(userfollower)
 
 ## create adjacency matrix
 p_load(igraph)
-A <- t(as.matrix(userfollower)) %*% as.matrix(userfollower) #error: cannot allocate vector of size 58.0 Gb
+A <- t(as.matrix(userfollower)) %*% as.matrix(userfollower) 
 
 ## matrix A might be too large
 if (ncol(A) > 500) A <- A[1:500,1:500]
@@ -130,18 +130,18 @@ load("net.RData")
 ##############################################
 
 ## Calculate the degree of all nodes in the network
-degree_of_all <- degree(net, mode = "all")
+degree_of_all <- degree(net, gmode = "graph")
 
-## Extract the degree of only the followers in the seconddegreefollowers data frame
-followers_idx <- match(tolower(seconddegreefollowers$screen_name), tolower(colnames(A)))
-fol_degree <- degree_of_all[followers_idx]
+## Extract the degree of only Orvaline her followers
+followers_idx <- match(tolower(firstdegree$username), tolower(colnames(A)))
+fol_degree <- degree_of_all[followers_idx] #has a lot of NA values
 
 ##################################################
 ## Step 5: rank followers based on their degree ##
 ##################################################
 
 ## Create a data frame with the user names, degree, and ground truth rank
-ground_truth <- data.frame(user = seconddegree$screen_name, degree = fol_degree)
+ground_truth <- data.frame(user = firstdegree$username, degree = fol_degree)
 ground_truth$ground_truth_rank <- rank(fol_degree)
 
 ## Save the groundtruth as "ground_truth"
