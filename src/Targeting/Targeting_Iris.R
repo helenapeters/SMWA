@@ -49,13 +49,13 @@ firstdegree
 
 ## Get followers of followers
 seconddegreefollowers <- list()
-l <- list()
+#l <- list()
 for (i in 1:nrow(firstdegree)) {
   cat('... Scraping: ', firstdegree$username[i], '\n')
   seconddegreefollowers[[i]] <- get_account_followers(
     firstdegree$id[i], limit = firstdegree$followers_count[i], retryonratelimit = TRUE
   )
-  l[[i]] <- seconddegreefollowers[[i]] %>% pull(username)
+  #l[[i]] <- seconddegreefollowers[[i]] %>% pull(username)
 }
 
 ## Now we have all the followers of followers
@@ -74,11 +74,14 @@ seconddegreefollowers
 # let's extract all the usernames of the followers
 followers <- list()
 for (i in 1:length(seconddegreefollowers)){
- followers[[i]] <- seconddegreefollowers[[i]] %>% pull(username) #gives error: does not find username
+  tryCatch({
+    followers[[i]] <- seconddegreefollowers[[i]] %>% pull(username)
+  }, error=function(e){})
 }
+names(followers) <- c(firstdegree$username,orvaline$username)
 
 #let's have a look
-glimpse(seconddegreefollowers)
+glimpse(followers)
 
 #####################################
 ## Step 3: create adjacency matrix ##
@@ -90,7 +93,7 @@ p_load(SnowballC, tm, igraph)
 ## Transform the list to a character vector
 ## Each element in the vector contains all the followers of a user
 
-mm <- do.call("c", lapply(seconddegreefollowers, paste, collapse=" "))
+mm <- do.call("c", lapply(followers, paste, collapse=" "))
 
 ## Transform that vector using the tm package to structure the unstructured data
 myCorpus <- Corpus(VectorSource(mm))
@@ -108,11 +111,14 @@ inspect(userfollower)
 ## create adjacency matrix
 p_load(igraph)
 A <- t(as.matrix(userfollower)) %*% as.matrix(userfollower) #error: cannot allocate vector of size 58.0 Gb
+
+## matrix A might be too large
+if (ncol(A) > 500) A <- A[1:500,1:500]
+
+#make a network object
 p_load(statnet)
 net <- network(A, matrix.type="adjacency")
 
-## if matrix is too large
-if (ncol(A) > 500) A <- A[1:500,1:500]
 
 ##############################################
 ## Step 4: compute degree for all followers ##
