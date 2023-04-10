@@ -133,10 +133,12 @@ degree_of_all <- degree(net, gmode="graph")
 
 #extract the degree of only our followers
 count = 1
-ground_truth <- data.frame()
-followers_idx <- integer(length = length(seconddegreefollowers$username))
+fol_degree <- c()
+followers_idx <- integer(length = length(firstdegree$username))
 
-for(i in seconddegreefollowers$username){
+ground_truth <- data.frame()
+
+for(i in firstdegree$username){
   print(i)
   
   followers_idx[count] <- grep(pattern = tolower(toString(i)), x = colnames(A))
@@ -179,7 +181,7 @@ seconddegreefollowers
 
 #function that creates adj matrix using N follower-of-followers
 compute_adj_matrix <- function(N){
-  basic_adj_matrix <- seconddegreefollowers
+  basic_adj_matrix <- followers
   
   mm <- do.call("c", lapply(basic_adj_matrix, paste, collapse=" "))
   myCorpus <- Corpus(VectorSource(mm))
@@ -191,7 +193,7 @@ compute_adj_matrix <- function(N){
   
   # nieuwe vector vec nodig om uit te sampelen
   vec <- 1:length(followers_of_followers_names)
-  vec <- vec[ -followers_idx ]
+  #vec <- vec[ -followers_idx ]
   
   # sample N random indices out of the remaining list of indices
   random_sample <- sample(vec, size = N)
@@ -203,12 +205,12 @@ compute_adj_matrix <- function(N){
 storage <- data.frame()
 
 
-for (i in 2:(length(degree_of_all)-length(followers_idx))) {
+for (i in 2:length(degree_of_all)) {
   print( i )
-  # with degree_of_all equal to the number of follower-of-followers
+  # with degree_of_all equal to the number of follower-of-followers in matrix A
   
   # compute adjacency matrix A using i followers-of-followers
-  mat <- compute_adjacency_matrix(i)
+  mat <- compute_adj_matrix(i)
   
   # compute the degree for all your followers
   degree_everyone <- degree(network(mat), gmode="graph")
@@ -216,17 +218,18 @@ for (i in 2:(length(degree_of_all)-length(followers_idx))) {
   followers_degree <- degree_everyone[1:length(followers_idx)]
   
   current_ranking <- data.frame( 
-    user = followers, 
+    user = followers_idx, 
     degree = followers_degree
   )
+ 
   current_ranking$rank <- rank(current_ranking$degree)
-  
   
   # compute spearman's rank-based correlation
   correlation = cor(ground_truth$ground_truth_rank, current_ranking$rank, method="spearman")
-  
+
   # store both i and correlation
   frame = data.frame( iteration=i, correlation = correlation)
+
   storage <- rbind(storage, frame)
 }
 
@@ -237,7 +240,7 @@ for (i in 2:(length(degree_of_all)-length(followers_idx))) {
 #######################################################
 p_load(tidyverse)
 
-ggplot(data = storage, aes(x = iteration, y = correlation)) +
+plot <- ggplot(data = storage, aes(x = iteration, y = correlation)) +
   geom_point() +
   labs(x="Network Size", y="Spearman's rank-based correlation")
 
