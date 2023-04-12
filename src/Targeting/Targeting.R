@@ -10,7 +10,7 @@ if (!require("pacman")) install.packages("pacman", quiet=TRUE) ; require("pacman
 p_load(rtoot, httpuv, tidyverse, lubridate)
 
 ## Set working directory
-setwd("C:/Users/irisc/OneDrive/Documenten/GitHub/SMWA/src/Targeting")
+setwd("C:\Users\Helena\Documents\GitHub\SMWA\src\Targeting\Targeting.R")
 
 ###########################
 ## Step 1: get followers ##
