@@ -6,12 +6,15 @@ install.packages("tuber")
 install.packages('https')
 library(tuber)
 
+
+###########This part has been done,data could be download from our github############
+
+
 myclientid='24403699099-gvcon4ph9qbvotffogimd6fg932m1t6f.apps.googleusercontent.com'
 clientsecret='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'
 yt_oauth(myclientid,clientsecret,token="")
 
 lastcommentseng1=get_all_comments('1OeC9CGtWcM')
-lastcommentseng2 <- head(lastcommentseng1,2000)
 
 #get a list of videos from a specific channel
 a <- list_channel_resources(filter = c(channel_id = "UCbulh9WdLtEXiooRcYK7SWw"), part="contentDetails")
@@ -34,6 +37,13 @@ res <- lapply(vid_ids, get_all_stats)
 res_df <- do.call(rbind, lapply(res, data.frame))
 
 head(res_df)
+
+
+###########These above has been done,data could be download from our github############
+
+load('SeventyTwoSeasons.RData')
+
+lastcommentseng2 <- head(lastcommentseng1,2000)
 
 # Load the required libraries
 library(tm)
