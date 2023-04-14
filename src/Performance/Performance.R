@@ -198,9 +198,6 @@ test_X <- cbind(test_X, dummy_test)
 ## Linear model ##
 ##################
 
-## Cleaning
-training_X <- subset(training_X, select = c(track.duration_ms, track.name, track.track_number, track.album.name, track.album.release_date, track.album.total_tracks))
-validation_X <- subset(validation_X, select = c(track.duration_ms, track.name, track.track_number, track.album.name, track.album.release_date, track.album.total_tracks))
 lm_model <- lm(track.popularity ~., data = train_val_basetable)
 predictions_lm <- predict(lm_model, X_test)
 mae_lm <- sum(abs(predictions - Y_test))/nrow(X_test) * std[[10]]
