@@ -199,6 +199,14 @@ str(training_y)
 training_X <- subset(training_X, select = c(track_id, album_release_date, danceability, energy, key, loudness, mode, speechiness, acousticness, instrumentalness, liveness, valence, tempo, duration_ms, track_name, track_number, album_name, mode_name, key_mode, added_at, explicit))
 validation_X <- subset(validation_X, select = c(track_id, album_release_date, danceability, energy, key, loudness, mode, speechiness, acousticness, instrumentalness, liveness, valence, tempo, duration_ms, track_name, track_number, album_name, mode_name, key_mode, added_at, explicit))
 
+# Multiply the duration column to get duration in minutes
+training_X$duration_ms <- training_X$duration_ms * 0.000016666666666666667
+validation_X$duration_ms <- validation_X$duration_ms * 0.000016666666666666667
+## Change the name of duration column
+names(training_X)[names(training_X) == "duration_ms"] <- "duration_min"
+names(validation_X)[names(validation_X) == "duration_ms"] <- "duration_min"
+
+
 #----------------Tot hier runt het-----------------------------------------------------
 
 
