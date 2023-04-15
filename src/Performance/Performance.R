@@ -287,6 +287,45 @@ validation_X_encode <- cbind(validation_X_encode, dummy_val)
 train_X <- subset(training_X_encode, select = -c(track.id, track.name))
 val_X <- subset(validation_X_encode, select = -c(track.id, track.name))
 
+#Iris
+library(glmnet)
+library(tidyr)
+y <- unlist(training_y)
+colnamesList = colnames(train_X)
+x <- data.matrix(train_X[, colnamesList])
+
+cv_model <- cv.glmnet(x, y, alpha = 1) # 10-fold cross-validation
+plot(cv_model)
+
+#find optimal lambda value that minimizes test MSE
+best_lambda <- cv_model$lambda.min
+best_lambda #1.681567
+
+best_model <- glmnet(x, y, alpha = 1, lambda = best_lambda)
+coef(best_model)
+
+# Predictor variables as data.matrix
+y1 <- unlist(validation_y)
+colnamesList1 = colnames(val_X)
+x1 <- data.matrix(val_X[, colnamesList1])
+
+# Predicting the response of the validation set
+y_predicted <- predict(best_model, s = best_lambda, newx = x1)
+
+# Calculate SST and SSE
+sst <- sum((y1 - mean(y1))^2)
+sse <- sum((y_predicted - y1)^2)
+
+# Calculate R-Squared
+rsq <- 1 - sse/sst
+rsq # 0.2515615
+
+# Calculate RMSE
+RMSE <- sqrt(mean((y_predicted - y1)^2))
+RMSE # 9.095221
+
+
+#Helena
 lm_model <- lm(training_y ~., data = train_X)
 predictions_lm <- predict(lm_model, val_X)
 mae_lm <- sum(abs(predictions_lm - validation_y))/nrow(val_X) * std[[10]]
