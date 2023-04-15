@@ -254,20 +254,43 @@ validation_X_encode <- cbind(validation_X_encode, dummy_val)
 test_X_encode <- subset(test_X, select = -c(key))
 test_X_encode <- cbind(test_X_encode, dummy_test)
 
+#################################
+## Step 1: Saving Data         ##
+#################################
+
+## Save data as train_set_X, val_set_X and test_set_X
+save(training_X_encode, file = "train_set_X.RData")
+save(validation_X_encode, file = "validation_set_X.RData")
+save(test_X_encode, file = "test_set_X.RData")
+
+## Save popularity as train_set_y and val_set_y
+save(training_y, file = "train_set_y.RData")
+save(validation_y, file = "val_set_y.RData")
+
 
 #####################
 ## Step 2: Predict ##
 #####################
 
 ######################################
+## Load in Data                     ##
+######################################
+load("train_set_X.RData")
+load("val_set_X.RData")
+load("test_set_X.RData")
+
+load("train_set_y.RData")
+load("val_set_y.RData")
+
+######################################
 ## Baseline Model: Lasso Regression ##
 ######################################
-train_X <- subset(training_X_encode, select = -c(track.id))
-val_X <- subset(validation_X_encode, select = -c(track.id))
+train_X <- subset(train_set_X, select = -c(track.id))
+val_X <- subset(val_set_X, select = -c(track.id))
 
 library(glmnet)
 library(tidyr)
-y <- unlist(training_y)
+y <- unlist(train_set_y)
 colnamesList = colnames(train_X)
 x <- data.matrix(train_X[, colnamesList])
 
@@ -282,7 +305,7 @@ best_model <- glmnet(x, y, alpha = 1, lambda = best_lambda)
 coef(best_model)
 
 # Predictor variables as data.matrix
-y1 <- unlist(validation_y)
+y1 <- unlist(val_set_y)
 colnamesList1 = colnames(val_X)
 x1 <- data.matrix(val_X[, colnamesList1])
 
@@ -302,7 +325,7 @@ RMSE <- sqrt(mean((y_predicted - y1)^2))
 RMSE # 9.077571
 
 # Predictor variables as data.matrix
-test_X <- subset(test_X_encode, select = -c(track.id))
+test_X <- subset(test_set_X, select = -c(track.id))
 
 colnamesList2 = colnames(test_X)
 x2 <- data.matrix(test_X[, colnamesList2])
