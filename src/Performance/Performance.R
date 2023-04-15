@@ -259,14 +259,12 @@ test_X_encode <- cbind(test_X_encode, dummy_test)
 ## Step 2: Predict ##
 #####################
 
-
-##################
-## Linear model ##
-##################
+######################################
+## Baseline Model: Lasso Regression ##
+######################################
 train_X <- subset(training_X_encode, select = -c(track.id, track.name))
 val_X <- subset(validation_X_encode, select = -c(track.id, track.name))
 
-#Iris: Lasso
 library(glmnet)
 library(tidyr)
 y <- unlist(training_y)
@@ -303,8 +301,9 @@ rsq # 0.2515615
 RMSE <- sqrt(mean((y_predicted - y1)^2))
 RMSE # 9.095221
 
-
-#Helena
+##################
+## Linear model ##
+##################
 lm_model <- lm(training_y ~., data = train_X)
 predictions_lm <- predict(lm_model, val_X)
 mae_lm <- sum(abs(predictions_lm - validation_y))/nrow(val_X) * std[[10]]
