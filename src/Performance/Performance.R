@@ -194,7 +194,7 @@ names(test_X)[names(test_X) == "track.duration_ms"] <- "duration_min"
 
 
 
-## Parsing dates   ----------Klopt nog niet-------------
+## Parsing dates
 
 # Save your current locale
 original_locale <- Sys.getlocale(category = "LC_TIME")
@@ -202,9 +202,9 @@ original_locale <- Sys.getlocale(category = "LC_TIME")
 Sys.setlocale(category = "LC_TIME", locale = "English_United States")
 
 # Transform the album_release_date into a posixct format for further manipulations
-training_X$album_release_date <- as.POSIXct(training_X$album_release_date, format = "%B %e %Y")
-validation_X$album_release_date <- as.POSIXct(validation_X$album_release_date, format = "%B %e %Y")
-#test_X$album_release_date <- as.POSIXct(test_X$album_release_date, format = "%B %e %Y")
+training_X$track.album.release_date <- as.POSIXct(training_X$track.album.release_date, format = "%Y-%m-%d")
+validation_X$track.album.release_date <- as.POSIXct(validation_X$track.album.release_date, format = "%Y-%m-%d")
+test_X$track.album.release_date <- as.POSIXct(test_X$track.album.release_date, format = "%Y-%m-%d")
 
 # Change back to the original locale
 Sys.setlocale(category = "LC_TIME", locale = original_locale)
