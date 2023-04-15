@@ -103,6 +103,8 @@ is_binary <- function(v) {
 ## Load the data by using the command:
 load("metallicafull.RData")
 
+load("MetallicaNewAlbum.RData")
+
 ################## Merge data ####################
 
 ### Delete duplicates
@@ -186,6 +188,7 @@ split_sample <- sample(nrow(train_val_basetable), 0.8*nrow(train_val_basetable))
 
 training <- train_val_basetable[split_sample, ]
 validation <- train_val_basetable[-split_sample, ]
+test <- Metallica_NewAlbum
 
 #separate dependent and independent variables
 training_X <- subset(training, select = -c(track.popularity))
@@ -202,17 +205,16 @@ str(training_y)
 ## Take subset -- Mss trackid nog verwijderen aangezien we al trackname hebben
 training_X <- subset(training_X, select = c(track.id, track.album.release_date, danceability, energy, key, loudness, mode, speechiness, acousticness, instrumentalness, liveness, valence, tempo, track.duration_ms, track.name, track.track_number))
 validation_X <- subset(validation_X, select = c(track.id, track.album.release_date, danceability, energy, key, loudness, mode, speechiness, acousticness, instrumentalness, liveness, valence, tempo, track.duration_ms, track.name, track.track_number))
-
+test_X <- subset(test, select = c(track.id, track.album.release_date, danceability, energy, key, loudness, mode, speechiness, acousticness, instrumentalness, liveness, valence, tempo, track.duration_ms, track.name, track.track_number))
 
 # Multiply the duration column to get duration in minutes
 training_X$track.duration_ms <- training_X$track.duration_ms * 0.000016666666666666667
 validation_X$track.duration_ms <- validation_X$track.duration_ms * 0.000016666666666666667
+test_X$track.duration_ms <- test_X$track.duration_ms * 0.000016666666666666667
 ## Change the name of duration column
 names(training_X)[names(training_X) == "track.duration_ms"] <- "duration_min"
 names(validation_X)[names(validation_X) == "track.duration_ms"] <- "duration_min"
-
-
-#----------------Tot hier runt het-----------------------------------------------------
+names(test_X)[names(test_X) == "track.duration_ms"] <- "duration_min"
 
 
 
@@ -243,8 +245,11 @@ library(dummy)
 #
 names(training_X)[names(training_X) == "mode"] <- "mode_major"
 names(validation_X)[names(validation_X) == "mode"] <- "mode_major"
+names(test_X)[names(test_X) == "mode"] <- "mode_major"
+
 training_X$mode_major <- as.character(training_X$mode_major)
 validation_X$mode_major <- as.character(validation_X$mode_major)
+test_X$mode_major <- as.character(test_X$mode_major)
 
 # Here are the categorical variables
 #cols_to_encode <- c("key")
@@ -255,15 +260,15 @@ validation_X$mode_major <- as.character(validation_X$mode_major)
 training_X$key <- as.character(training_X$key)
 cats <- categories(training_X["key"])
 
-# apply on train set and exclude reference categories  ----- reference category: album Load and key 4 (E)
+# apply on train set and exclude reference categories  ----- reference category: key 4 (E)
 dummy_train <- dummy(training_X["key"], object = cats)
 dummy_train <- subset(dummy_train, select = -c(key_4))
 # apply on validation set and exclude reference categories
 dummy_val <- dummy(validation_X["key"], object = cats)
 dummy_val <- subset(dummy_val, select = -c(key_4))
 # apply on test set and exclude reference categories
-#dummy_test <- dummy(test_X[, cols_to_encode], object = cats)
-#dummy_test <- subset(Load, major, E major, FALSE))
+dummy_test <- dummy(test_X["key"], object = cats)
+dummy_test <- subset(dummy_test,select = -c(key_4))
 
 # merge with overall training set
 training_X_encode <- subset(training_X, select = -c(key))
@@ -272,8 +277,8 @@ training_X_encode <- cbind(training_X_encode, dummy_train)
 validation_X_encode <- subset(validation_X, select = -c(key))
 validation_X_encode <- cbind(validation_X_encode, dummy_val)
 # merge with overall test set
-#test_X <- subset(test_X, select = -c(album_name, mode_name, key_mode, explicit))
-#test_X <- cbind(test_X, dummy_test)
+test_X_encode <- subset(test_X, select = -c(key))
+test_X_encode <- cbind(test_X_encode, dummy_test)
 
 
 #####################
@@ -287,7 +292,7 @@ validation_X_encode <- cbind(validation_X_encode, dummy_val)
 train_X <- subset(training_X_encode, select = -c(track.id, track.name))
 val_X <- subset(validation_X_encode, select = -c(track.id, track.name))
 
-#Iris
+#Iris: Lasso
 library(glmnet)
 library(tidyr)
 y <- unlist(training_y)
