@@ -260,7 +260,7 @@ test_X_encode <- cbind(test_X_encode, dummy_test)
 
 ## Save data as train_set_X, val_set_X and test_set_X
 save(training_X_encode, file = "train_set_X.RData")
-save(validation_X_encode, file = "validation_set_X.RData")
+save(validation_X_encode, file = "val_set_X.RData")
 save(test_X_encode, file = "test_set_X.RData")
 
 ## Save popularity as train_set_y and val_set_y
@@ -285,12 +285,12 @@ load("val_set_y.RData")
 ######################################
 ## Baseline Model: Lasso Regression ##
 ######################################
-train_X <- subset(train_set_X, select = -c(track.id))
-val_X <- subset(val_set_X, select = -c(track.id))
+train_X <- subset(training_X_encode, select = -c(track.id))
+val_X <- subset(validation_X_encode, select = -c(track.id))
 
 library(glmnet)
 library(tidyr)
-y <- unlist(train_set_y)
+y <- unlist(training_y)
 colnamesList = colnames(train_X)
 x <- data.matrix(train_X[, colnamesList])
 
@@ -299,13 +299,13 @@ plot(cv_model)
 
 #find optimal lambda value that minimizes test MSE
 best_lambda <- cv_model$lambda.min
-best_lambda #1.783141
+best_lambda #1.22905
 
 best_model <- glmnet(x, y, alpha = 1, lambda = best_lambda)
 coef(best_model)
 
 # Predictor variables as data.matrix
-y1 <- unlist(val_set_y)
+y1 <- unlist(validation_y)
 colnamesList1 = colnames(val_X)
 x1 <- data.matrix(val_X[, colnamesList1])
 
@@ -318,14 +318,14 @@ sse <- sum((y_predicted - y1)^2)
 
 # Calculate R-Squared
 rsq <- 1 - sse/sst
-rsq # 0.2544634
+rsq # 0.2966861
 
 # Calculate RMSE
 RMSE <- sqrt(mean((y_predicted - y1)^2))
-RMSE # 9.077571
+RMSE # 8.816775
 
 # Predictor variables as data.matrix
-test_X <- subset(test_set_X, select = -c(track.id))
+test_X <- subset(test_X_encode, select = -c(track.id))
 
 colnamesList2 = colnames(test_X)
 x2 <- data.matrix(test_X[, colnamesList2])
@@ -336,6 +336,8 @@ y2 <- predict(best_model, s = best_lambda, newx = x2)
 ### Prediction as a dataframe
 y2_df <- data.frame(track.name = test_X$track.name, track.popularity = y2)
 colnames(y2_df) <- c('track.name','track.popularity')
+
+view(y2_df)
 
 ## Save y2_df as "prediction_lasso"
 save(y2_df, file = "prediction_lasso.RData")
