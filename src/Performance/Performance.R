@@ -24,7 +24,7 @@ setwd("C:/Users/irisc/OneDrive/Documenten/GitHub/SMWA/src/Performance")
 ## Only need to run this once
 #auth_setup()
 
-## Search for 50 toots using the amelielens hashtag
+## Search for 50 toots using the metallica hashtag
 toots <- get_timeline_hashtag("#metallica", limit = 50, retryonratelimit = TRUE) ##Only 6?
 
 ## Preview toot data
@@ -88,36 +88,15 @@ is_binary <- function(v) {
 
 ################## Read data ####################
 
-# ## Save the data as "metallica2"
-# save(metallica2, file = "metallica2.RData")
-# 
-# ## Save the data as "metallica3"
-# save(metallica3, file = "metallica3.RData")
-
-## Load the data by using the command:
-#load("metallica2.RData")
-
-## Load the data by using the command:
-#load("metallica3.RData")
-
-## Load the data by using the command:
+## Load the training data by using the command:
 load("metallicafull.RData")
 
+## Load the test data by using the command:
 load("MetallicaNewAlbum.RData")
-
-################## Merge data ####################
-
-### Delete duplicates
-#metallica_no_popularity <- metallica2[!duplicated(metallica2$track_name), ]
-
-## Change the name of track.id column
-#names(metallica3)[names(metallica3) == "track.id"] <- "track_id"
-
-## Create the full dataframe
-#metallica_full <- merge(x = metallica_no_popularity, y = metallica3, by= 'track_id')
 
 ## Create Basetable
 train_val_basetable <- Metallicafull
+test <- Metallica_NewAlbum
 
 ################## Exploratory data analysis ####################
 
@@ -178,9 +157,6 @@ for (column in category_cols){
 
 
 ################## Split data ####################
-
-#####Still need to add test set!!!!!!!!!!
-
 #A seed is set for reproducing purposes
 set.seed(1)
 
@@ -188,7 +164,6 @@ split_sample <- sample(nrow(train_val_basetable), 0.8*nrow(train_val_basetable))
 
 training <- train_val_basetable[split_sample, ]
 validation <- train_val_basetable[-split_sample, ]
-test <- Metallica_NewAlbum
 
 #separate dependent and independent variables
 training_X <- subset(training, select = -c(track.popularity))
@@ -202,7 +177,8 @@ str(training_y)
 
 ################## Clean data ####################
 
-## Take subset -- Mss trackid nog verwijderen aangezien we al trackname hebben
+## Take subset of only the usefull columns
+## Note: we also deleted track.album as a variable because we want to predict the popularity of Metallicas newest album
 training_X <- subset(training_X, select = c(track.id, track.album.release_date, danceability, energy, key, loudness, mode, speechiness, acousticness, instrumentalness, liveness, valence, tempo, track.duration_ms, track.name, track.track_number))
 validation_X <- subset(validation_X, select = c(track.id, track.album.release_date, danceability, energy, key, loudness, mode, speechiness, acousticness, instrumentalness, liveness, valence, tempo, track.duration_ms, track.name, track.track_number))
 test_X <- subset(test, select = c(track.id, track.album.release_date, danceability, energy, key, loudness, mode, speechiness, acousticness, instrumentalness, liveness, valence, tempo, track.duration_ms, track.name, track.track_number))
@@ -242,7 +218,7 @@ Sys.setlocale(category = "LC_TIME", locale = original_locale)
 ## One-hot encoding
 library(dummy)
 
-#
+#readability: a one in the column mode represents a major chord, a zero represents a minor chord
 names(training_X)[names(training_X) == "mode"] <- "mode_major"
 names(validation_X)[names(validation_X) == "mode"] <- "mode_major"
 names(test_X)[names(test_X) == "mode"] <- "mode_major"
@@ -251,16 +227,14 @@ training_X$mode_major <- as.character(training_X$mode_major)
 validation_X$mode_major <- as.character(validation_X$mode_major)
 test_X$mode_major <- as.character(test_X$mode_major)
 
-# Here are the categorical variables
+# Here are the categorical variables: only key is categorical, so this line is redundant
 #cols_to_encode <- c("key")
-
-
 
 # We retain all the possible categories
 training_X$key <- as.character(training_X$key)
 cats <- categories(training_X["key"])
 
-# apply on train set and exclude reference categories  ----- reference category: key 4 (E)
+# apply on train set and exclude reference category  ----- reference category: key 4 (E)
 dummy_train <- dummy(training_X["key"], object = cats)
 dummy_train <- subset(dummy_train, select = -c(key_4))
 # apply on validation set and exclude reference categories
