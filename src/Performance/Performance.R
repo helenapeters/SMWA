@@ -262,8 +262,8 @@ test_X_encode <- cbind(test_X_encode, dummy_test)
 ######################################
 ## Baseline Model: Lasso Regression ##
 ######################################
-train_X <- subset(training_X_encode, select = -c(track.id, track.name))
-val_X <- subset(validation_X_encode, select = -c(track.id, track.name))
+train_X <- subset(training_X_encode, select = -c(track.id))
+val_X <- subset(validation_X_encode, select = -c(track.id))
 
 library(glmnet)
 library(tidyr)
@@ -276,7 +276,7 @@ plot(cv_model)
 
 #find optimal lambda value that minimizes test MSE
 best_lambda <- cv_model$lambda.min
-best_lambda #1.681567
+best_lambda #1.783141
 
 best_model <- glmnet(x, y, alpha = 1, lambda = best_lambda)
 coef(best_model)
@@ -295,11 +295,27 @@ sse <- sum((y_predicted - y1)^2)
 
 # Calculate R-Squared
 rsq <- 1 - sse/sst
-rsq # 0.2515615
+rsq # 0.2544634
 
 # Calculate RMSE
 RMSE <- sqrt(mean((y_predicted - y1)^2))
-RMSE # 9.095221
+RMSE # 9.077571
+
+# Predictor variables as data.matrix
+test_X <- subset(test_X_encode, select = -c(track.id))
+
+colnamesList2 = colnames(test_X)
+x2 <- data.matrix(test_X[, colnamesList2])
+
+# Prediction based on the test set features
+y2 <- predict(best_model, s = best_lambda, newx = x2)
+
+### Prediction as a dataframe
+y2_df <- data.frame(track.name = test_X$track.name, track.popularity = y2)
+colnames(y2_df) <- c('track.name','track.popularity')
+
+## Save y2_df as "prediction_lasso"
+save(y2_df, file = "prediction_lasso.RData")
 
 ##################
 ## Linear model ##
@@ -316,7 +332,7 @@ mae_lm
 library(xgboost)
 
 ## Train on training set, predict on validation set
-xgb_model_test <- xgboost(data = as.matrix(training_X), label = as.matrix(training_y),
+xgb_model_test <- xgboost(data = as.matrix(train_X), label = as.matrix(training_y),
                      max.depth = 4, nthread = 8, nrounds = 200, eval_metric = "mae")
 
 predictions_XGBoost_test <- predict(xgb_model_test, as.matrix(validation_X))
