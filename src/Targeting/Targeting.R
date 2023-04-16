@@ -10,7 +10,7 @@ if (!require("pacman")) install.packages("pacman", quiet=TRUE) ; require("pacman
 p_load(rtoot, httpuv, tidyverse, lubridate)
 
 ## Set working directory
-setwd("C:\Users\Helena\Documents\GitHub\SMWA\src\Targeting\Targeting.R")
+setwd("C:/Users/Helena/Documents/eerste_master/SMWA/Project_test/data_scrape")
 
 ###########################
 ## Step 1: get followers ##
@@ -18,24 +18,24 @@ setwd("C:\Users\Helena\Documents\GitHub\SMWA\src\Targeting\Targeting.R")
 
 ## Set up authentication
 ## Only need to run this once
-auth_setup()
+#auth_setup()
 
-## Look up the account for Orvaline and look at the best match
-my_name <- "Orvaline"
-orvaline <- search_accounts(my_name)[1, ]
+## Look up the account for Dirk Van den Poel and look at the best match
+my_name <- "Dirk Van den Poel"
+dirk <- search_accounts(my_name)[1, ]
 
 ## This results in a account object with all kinds of information
-glimpse(orvaline)
+glimpse(dirk)
 
-## Retrieve all her followers
-firstdegree <- get_account_followers(
-  orvaline$id,
-  limit = orvaline$followers_count,
-  retryonratelimit = TRUE
-)
-
-## Save the data as "firstdegree"
-save(firstdegree, file = "firstdegree.RData")
+# ## Retrieve all his followers
+# firstdegree <- get_account_followers(
+#   dirk$id,
+#   limit = dirk$followers_count,
+#   retryonratelimit = TRUE
+# )
+# 
+# ## Save the data as "firstdegree"
+# save(firstdegree, file = "firstdegree.RData")
 
 ## Load the data by using the command:
 load("firstdegree.RData")
@@ -47,29 +47,29 @@ firstdegree
 ## Step 2: get followers of followers ##
 ########################################
 
-## Get followers of followers
-seconddegreefollowers <- list()
-#l <- list()
-for (i in 1:nrow(firstdegree)) {
-  cat('... Scraping: ', firstdegree$username[i], '\n')
-  seconddegreefollowers[[i]] <- get_account_followers(
-    firstdegree$id[i], limit = firstdegree$followers_count[i], retryonratelimit = TRUE
-  )
-  #l[[i]] <- seconddegreefollowers[[i]] %>% pull(username)
-}
-
-## Now we have all the followers of followers
-## Let's add the first degree followers to that list
-seconddegreefollowers[[length(seconddegreefollowers)+1]] <- firstdegree
-
-## Save the data as "firstdegree"
-save(seconddegreefollowers, file = "seconddegreefollowers.RData")
+# ## Get followers of followers
+# seconddegreefollowers <- list()
+# #l <- list()
+# for (i in 1:nrow(firstdegree)) {
+#   cat('... Scraping: ', firstdegree$username[i], '\n')
+#   seconddegreefollowers[[i]] <- get_account_followers(
+#     firstdegree$id[i], limit = firstdegree$followers_count[i], retryonratelimit = TRUE
+#   )
+#   #l[[i]] <- seconddegreefollowers[[i]] %>% pull(username)
+# }
+# 
+# ## Now we have all the followers of followers
+# ## Let's add the first degree followers to that list
+# seconddegreefollowers[[length(seconddegreefollowers)+1]] <- firstdegree
+# 
+# ## Save the data as "seconddegreefollowers"
+# save(seconddegreefollowers, file = "seconddegreefollowers.RData")
 
 ## Load the data by using the command:
 load("seconddegreefollowers.RData")
 
 ## Access the loaded data using the saved variable name:
-seconddegreefollowers
+#seconddegreefollowers
 
 # let's extract all the usernames of the followers
 followers <- list()
@@ -78,7 +78,7 @@ for (i in 1:length(seconddegreefollowers)){
     followers[[i]] <- seconddegreefollowers[[i]] %>% pull(username)
   }, error=function(e){})
 }
-names(followers) <- c(firstdegree$username,orvaline$username)
+names(followers) <- c(firstdegree$username,dirk$username)
 
 #let's have a look
 glimpse(followers)
@@ -113,7 +113,7 @@ p_load(igraph)
 A <- t(as.matrix(userfollower)) %*% as.matrix(userfollower) 
 
 ## matrix A might be too large
-if (ncol(A) > 500) A <- A[1:500,1:500]
+#if (ncol(A) > 500) A <- A[1:500,1:500]
 
 #make a network object
 p_load(statnet)
@@ -148,23 +148,23 @@ ground_truth$ground_truth_rank <- rank(fol_degree)
 rlist::list.save(ground_truth, file = "ground_truth.RData")
 
 ## Load the data by using the command:
-ground_truth <- rlist::list.load("ground_truth.RData")
+#ground_truth <- rlist::list.load("ground_truth.RData")
 
 ##################################################################
 ############################# PART 2 #############################
 ##################################################################
 
-##############################################
-## Step 1: get all followers of orvaline    ##
-##############################################
+#######################################
+## Step 1: get all followers of dirk ##
+#######################################
 load("firstdegree.RData")
-firstdegree
+#firstdegree
 
 ##############################################
 ## Step 2: get all followers of followers   ##
 ##############################################
 load("seconddegreefollowers.RData")
-seconddegreefollowers
+#seconddegreefollowers
 
 ##############################################
 ## Step 3: for each follower of follower    ##
@@ -174,44 +174,102 @@ seconddegreefollowers
 ##    - compute Spearman's correlation      ##
 ##############################################
 
-## Create data frame that will store the results of the correlation calculations
-results <- data.frame(matrix(NA, nrow = (nrow(userfollower) - 1), ncol = 2))
-colnames(results) <- c("followers_of_followers", "spearman_correlation")
+# ## This function generates an adjacency matrix based on N followers-of-followers
+# compute_adj_matrix <- function(N){
+#   basic_adj_matrix <- followers
+# 
+#   mm <- do.call("c", lapply(basic_adj_matrix, paste, collapse=" "))
+#   myCorpus <- Corpus(VectorSource(mm))
+#   userfollower <- DocumentTermMatrix(myCorpus, control = list(wordLengths = c(0, Inf)))
+#   B <- t(as.matrix(userfollower)) %*% as.matrix(userfollower)
+# 
+#   # Subtract usernames by assigning the column names of matrix B to the variable "followers_of_followers_names"
+#   followers_of_followers_names <- colnames(B)
+# 
+#   # Create a new vector for sampling by setting "vec" to a sequence of integers from 1 to the length of "followers_of_followers_names"
+#   vec <- 1:length(followers_of_followers_names)
+# 
+#   # Sample N random indices from the remaining indices in the "vec" vector and store them in "random_sample"
+#   random_sample <- sample(vec, size = N)
+#   ind_sample_adjacency <- c( followers_idx, random_sample)
+# 
+#   return( B[ind_sample_adjacency, ind_sample_adjacency] )
+# }
+# 
+# storage <- data.frame()
+# 
+# 
+# for (i in 2:length(degree_of_all)) {
+#   print( i )
+#   # "degree_of_all" corresponds to the number of follower-of-followers in matrix A.
+# 
+#   # Compute the adjacency matrix A using i levels of followers-of-followers
+#   mat <- compute_adj_matrix(i)
+# 
+#   # Calculate the degree of every follower
+#   degree_everyone <- degree(network(mat), gmode="graph")
+# 
+#   followers_degree <- degree_everyone[1:length(followers_idx)]
+# 
+#   current_ranking <- data.frame(
+#     user = followers_idx,
+#     degree = followers_degree
+#   )
+# 
+#   current_ranking$rank <- rank(current_ranking$degree)
+# 
+#   # Calculate the Spearman's rank-based correlation coefficient between the ground truth ranking and the current ranking
+#   correlation = cor(ground_truth$ground_truth_rank, current_ranking$rank, method="spearman")
+# 
+#   # Create a data frame called "frame" with two columns: "iteration" and "correlation"
+#   frame = data.frame( iteration=i, correlation = correlation)
+# 
+#   storage <- rbind(storage, frame)
+# }
+# 
+# ## Save the data as "storage"
+# save(storage, file = "storage.RData")
 
-for (i in 2:(nrow(userfollower) - 1)) {
-  # Compute adjacency matrix A using i followers-of-followers
-  A <- matrix(nrow = nrow(userfollower), ncol = nrow(userfollower))
-  for (j in 1:nrow(userfollower)) {
-    followers <- userfollower[j, ]
-    for (k in 1:i) {
-      followers <- unique(c(followers, unlist(userfollower[followers, ])))
-    }
-    A[j, followers] <- 1
-  }
-  
-  # Convert A to data frame and set column names
-  df <- as.data.frame(A)
-  colnames(df) <- names(userfollower)
-  
-  # Compute the degree for all your followers
-  degree <- sna::degree(df)
-  
-  # Rank all your followers based on their degree and store in current ranking
-  current_ranking <- data.frame(vertex_names = names(degree), vertex_degree = degree)
-  current_ranking <- current_ranking[order(-current_ranking$vertex_degree), ]
-  
-  # Compute Spearman's rank-based correlation
-  spearman_correlation <- cor(groundtruth_df_users$vertex_degree, current_ranking$vertex_degree, method = "spearman")
-  
-  # Store both i and correlation
-  results[i - 1, 1] <- i
-  results[i - 1, 2] <- spearman_correlation
-}
+## Load the data by using the command:
+load("storage.RData")
+
+## Access the loaded data using the saved variable name:
+#storage
 
 #######################################################
 ## Step 4: plot follower-of-follower and correlation ##
 #######################################################
 
-plot(results$followers_of_followers, results$spearman_correlation, type = "l",
-     xlab = "Size of network used to compute degree", ylab = "Rank-based correlation")
+p_load(tidyverse)
 
+plot <- ggplot(data = storage, aes(x = iteration, y = correlation)) +
+  geom_point() +
+  labs(x="Network Size", y="Spearman's rank-based correlation")
+
+############### Plot network ###############
+
+## Create a graph object based on the adjacency matrix & remove loop edges
+g <- graph.adjacency(A, weighted=TRUE,
+                     mode ='undirected') %>% simplify()
+
+## Set labels and degrees of vertices
+V(g)$label <- V(g)$name
+V(g)$degree <- igraph::degree(g)
+## Plot the Graph
+set.seed(3952)
+## Prepare graph
+layout <- layout.auto(g)
+## Give the graph lots of room
+
+mar <- par()$mar ## Store this for later
+par(mar=rep(0, 4))
+plot(g, layout=layout, vertex.label=NA,
+     edge.curved=TRUE,vertex.size=3,
+     vertex.color=c("green","red","blue")[ifelse(V(g)$name %in%
+                                                   names(igraph::degree(g)[tail(order(igraph::degree(g)),5)]) ==TRUE,1,
+                                                 ifelse(V(g)$name %in%
+                                                          names(igraph::degree(g)[tail(order(igraph::betweenness(g)),10)]) ==TRUE,2,3))])
+
+# The top 5 vertices based on degree are in green
+# The top 10 vertices based on betweenness (and not based on degree) are in red
+# All the other vertices are in blue
