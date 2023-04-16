@@ -160,9 +160,9 @@ str(training_y)
 
 ## Take subset of only the usefull columns
 ## Note: we also deleted track.album as a variable because we want to predict the popularity of Metallicas newest album
-training_X <- subset(training_X, select = c(track.id, track.album.release_date, danceability, energy, key, loudness, mode, speechiness, acousticness, instrumentalness, liveness, valence, tempo, track.duration_ms, track.name, track.track_number))
-validation_X <- subset(validation_X, select = c(track.id, track.album.release_date, danceability, energy, key, loudness, mode, speechiness, acousticness, instrumentalness, liveness, valence, tempo, track.duration_ms, track.name, track.track_number))
-test_X <- subset(test, select = c(track.id, track.album.release_date, danceability, energy, key, loudness, mode, speechiness, acousticness, instrumentalness, liveness, valence, tempo, track.duration_ms, track.name, track.track_number))
+training_X <- subset(training_X, select = c(track.id, danceability, energy, key, loudness, mode, speechiness, acousticness, instrumentalness, liveness, valence, tempo, track.duration_ms, track.name, track.track_number))
+validation_X <- subset(validation_X, select = c(track.id, danceability, energy, key, loudness, mode, speechiness, acousticness, instrumentalness, liveness, valence, tempo, track.duration_ms, track.name, track.track_number))
+test_X <- subset(test, select = c(track.id, danceability, energy, key, loudness, mode, speechiness, acousticness, instrumentalness, liveness, valence, tempo, track.duration_ms, track.name, track.track_number))
 
 # Multiply the duration column to get duration in minutes
 training_X$track.duration_ms <- training_X$track.duration_ms * 0.000016666666666666667
@@ -175,20 +175,20 @@ names(test_X)[names(test_X) == "track.duration_ms"] <- "duration_min"
 
 
 
-## Parsing dates
+## Parsing dates: no longer necessary after removing track.album.release_date as a variable
 
-# Save your current locale
-original_locale <- Sys.getlocale(category = "LC_TIME")
-# Change it to US
-Sys.setlocale(category = "LC_TIME", locale = "English_United States")
+## Save your current locale
+# original_locale <- Sys.getlocale(category = "LC_TIME")
+## Change it to US
+#Sys.setlocale(category = "LC_TIME", locale = "English_United States")
 
-# Transform the album_release_date into a posixct format for further manipulations
-training_X$track.album.release_date <- as.POSIXct(training_X$track.album.release_date, format = "%Y-%m-%d")
-validation_X$track.album.release_date <- as.POSIXct(validation_X$track.album.release_date, format = "%Y-%m-%d")
-test_X$track.album.release_date <- as.POSIXct(test_X$track.album.release_date, format = "%Y-%m-%d")
+## Transform the album_release_date into a posixct format for further manipulations
+# training_X$track.album.release_date <- as.POSIXct(training_X$track.album.release_date, format = "%Y-%m-%d")
+# validation_X$track.album.release_date <- as.POSIXct(validation_X$track.album.release_date, format = "%Y-%m-%d")
+# test_X$track.album.release_date <- as.POSIXct(test_X$track.album.release_date, format = "%Y-%m-%d")
 
-# Change back to the original locale
-Sys.setlocale(category = "LC_TIME", locale = original_locale)
+## Change back to the original locale
+# Sys.setlocale(category = "LC_TIME", locale = original_locale)
 
 #################################
 ## Step 1: Feature engineering ##
@@ -316,7 +316,7 @@ plot(cv_model)
 
 #find optimal lambda value that minimizes test MSE
 best_lambda <- cv_model$lambda.min
-best_lambda #1.22905
+best_lambda #1.488625
 
 best_model <- glmnet(x, y, alpha = 1, lambda = best_lambda)
 coef(best_model)
@@ -335,11 +335,11 @@ sse <- sum((y_predicted - y1)^2)
 
 # Calculate R-Squared
 rsq <- 1 - sse/sst
-rsq # 0.2721298
+rsq # 0.1940116
 
 # Calculate RMSE
 RMSE <- sqrt(mean((y_predicted - y1)^2))
-RMSE # 8.969374
+RMSE # 9.438426
 
 # Duplicate test_X
 test_X2 <- test_X
@@ -364,14 +364,14 @@ best_model <- glmnet(x_full, y_full, alpha = 1, lambda = best_lambda)
 y_predicted <- predict(best_model, s = best_lambda, newx = x2)
 
 # Create a dataframe of the predictions
-y_pred_df <- data.frame(track.name = test_X2$track.name, track.popularity = y_predicted)
-colnames(y_pred_df) <- c('track.name','track.popularity')
+prediction_lasso <- data.frame(track.name = test_X2$track.name, track.popularity = y_predicted)
+colnames(prediction_lasso) <- c('track.name','track.popularity')
 
 # View the predictions
-view(y_pred_df)
+view(prediction_lasso)
 
 # Save the predictions as "prediction_lasso"
-save(y_pred_df, file = "prediction_lasso.RData")
+save(prediction_lasso, file = "prediction_lasso.RData")
 
 
 ##################
@@ -390,11 +390,11 @@ sse <- sum((val_y_pred - y1)^2)
 
 # Calculate R-Squared
 rsq <- 1 - sse/sst
-rsq # 0.3086418
+rsq # 0.1176606
 
 # Calculate RMSE
 RMSE <- sqrt(mean((val_y_pred - y1)^2))
-RMSE # 8.741515
+RMSE # 9.875361
 
 # Combine the training and validation sets
 x_full <- rbind(x, x1)
@@ -452,11 +452,11 @@ sse <- sum((val_y_pred - y1)^2)
 
 # Calculate R-Squared
 rsq <- 1 - sse/sst
-rsq # 0.6459584
+rsq # 0.6576931
 
 # Calculate RMSE
 RMSE <- sqrt(mean((val_y_pred - y1)^2))
-RMSE # 6.255504
+RMSE # 6.150961
 
 # Combine training and validation sets
 train_val_X <- rbind(x, x1)
@@ -517,11 +517,11 @@ sse <- sum((val_y_pred - y1)^2)
 
 # Calculate R-Squared
 rsq <- 1 - sse/sst
-rsq # 0.5117675
+rsq # 0.3772861
 
 # Calculate RMSE
 RMSE <- sqrt(mean((val_y_pred - y1)^2))
-RMSE # 7.345959
+RMSE # 8.296205
 
 # Combine training and validation data
 x_trainval <- rbind(x, x1)
@@ -545,3 +545,35 @@ prediction_rf <- data.frame(track.name = test_X_encode$track.name, track.popular
 
 # Save predictions as "prediction_rf"
 save(prediction_rf, file = "prediction_rf.RData")
+
+
+###################
+## Comparison    ##
+###################
+
+#load predictions
+load("prediction_lasso.RData")
+load("prediction_lm.RData")
+load("prediction_rf.RData")
+load("prediction_xgb.RData")
+
+#change the column name of track.popularity according to the model used to make the predictions
+names(prediction_lm)[names(prediction_lm) == "track.popularity"] <- "popularity.lm"
+names(prediction_rf)[names(prediction_rf) == "track.popularity"] <- "popularity.rf"
+names(prediction_xgb)[names(prediction_xgb) == "track.popularity"] <- "popularity.xgb"
+names(prediction_lasso)[names(prediction_lasso) == "track.popularity"] <- "popularity.lasso"
+
+#merge all dataframes
+library(tidyverse)
+prediction_overview <- list(prediction_lasso, prediction_lm, prediction_xgb, prediction_rf)
+prediction_overview %>% reduce(inner_join, by='track.name')
+prediction_overview <- data.frame(prediction_overview)
+prediction_overview <- subset(prediction_overview, select = -c(track.name.1, track.name.2, track.name.3))
+
+#only keep unique rows
+prediction_overview <- distinct(prediction_overview)
+
+# Save predictions as a csv file named "prediction_overview"
+write.csv(prediction_overview, "C:/Users/irisc/OneDrive/Documenten/GitHub/SMWA/src/Performance/prediction_overview.csv", row.names = FALSE)
+
+#save(prediction_overview, file = "prediction_overview.RData")
