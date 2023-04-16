@@ -10,29 +10,11 @@ if (!require("pacman")) install.packages("pacman", quiet=TRUE) ; require("pacman
 p_load(rtoot, httpuv, tidyverse, lubridate, rvest, caret, dplyr)
 
 ## Set working directory
-setwd("C:/Users/irisc/OneDrive/Documenten/GitHub/SMWA/src/Performance")
+setwd("C:/Users/Helena/Documents/eerste_master/SMWA/Project_test/data_scrape")
 
 ######################
 ## Step 1: Scraping ##
 ######################
-
-##############
-## Mastodon ##
-##############
-
-## Set up authentication
-## Only need to run this once
-#auth_setup()
-
-## Search for 50 toots using the metallica hashtag
-toots <- get_timeline_hashtag("#metallica", limit = 50, retryonratelimit = TRUE) ##Only 6?
-
-## Preview toot data
-glimpse(toots)
-
-############
-## Reddit ##
-############
 
 #############
 ## Spotify ##
@@ -42,13 +24,6 @@ glimpse(toots)
 ## Youtube ##
 #############
 
-#############
-## Last.fm ##
-#############
-
-#############
-##  ...    ##
-#############
 
 ########################
 ## Step 2: Wordclouds ##
@@ -88,8 +63,14 @@ is_binary <- function(v) {
 
 ################## Read data ####################
 
+## Save the training data
+#save(Metallicafull, file = "metallicafull.RData")
+
 ## Load the training data by using the command:
 load("metallicafull.RData")
+
+## Save the test data
+#save(Metallica_NewAlbum, file = "MetallicaNewAlbum.RData")
 
 ## Load the test data by using the command:
 load("MetallicaNewAlbum.RData")
@@ -282,11 +263,47 @@ load("test_set_X.RData")
 load("train_set_y.RData")
 load("val_set_y.RData")
 
+## standardization
+
+# Numeric columns in training_X_encode
+check_cols <- sapply(training_X_encode, is.numeric)
+numeric_cols <- colnames(training_X_encode[,check_cols]) 
+numeric_cols
+
+# do not scale the one-hot encoded columns
+num.cols <- sapply(training_X_encode, is.numeric)
+num.cols[names(num.cols) %in% c("track.id")] <- FALSE
+num.cols
+
+scale_cols <- c(num.cols)
+
+
+# apply on training set
+mean_train <- colMeans(training_X_encode[, scale_cols])
+sd_train <- sapply(training_X_encode[, scale_cols], sd)
+training_X_encode[, scale_cols] <- scale(training_X_encode[, scale_cols], center = TRUE, scale = TRUE)
+
+#apply on validation test
+validation_X_encode[, scale_cols] <- scale(validation_X_encode[, scale_cols], center = mean_train, scale = sd_train)
+
+# apply on test set
+test_X_encode[, scale_cols] <- scale(test_X_encode[, scale_cols], center = mean_train, scale = sd_train)
+
+# check the distributions
+colMeans(training_X_encode[, scale_cols])
+sapply(training_X_encode[, scale_cols], sd)
+
+colMeans(validation_X_encode[, scale_cols])
+sapply(validation_X_encode[, scale_cols], sd)
+
+colMeans(test_X_encode[, scale_cols])
+sapply(test_X_encode[, scale_cols], sd)
+
 ######################################
 ## Baseline Model: Lasso Regression ##
 ######################################
-train_X <- subset(training_X_encode, select = -c(track.id))
-val_X <- subset(validation_X_encode, select = -c(track.id))
+train_X <- subset(training_X_encode, select = -c(track.id, track.name))
+val_X <- subset(validation_X_encode, select = -c(track.id, track.name))
 
 library(glmnet)
 library(tidyr)
@@ -324,84 +341,207 @@ rsq # 0.2966861
 RMSE <- sqrt(mean((y_predicted - y1)^2))
 RMSE # 8.816775
 
+# Duplicate test_X
+test_X2 <- test_X
+
 # Predictor variables as data.matrix
-test_X <- subset(test_X_encode, select = -c(track.id))
+test_X <- subset(test_X_encode, select = -c(track.id, track.name))
 
 colnamesList2 = colnames(test_X)
 x2 <- data.matrix(test_X[, colnamesList2])
 
+# Combine the training and validation sets
+x_full <- rbind(x, x1)
+y_full <- c(y, y1)
+
+# Convert predictor variables to data.matrix
+x_full <- data.matrix(x_full)
+
+# Train the model on the full dataset with the optimal lambda value
+best_model <- glmnet(x_full, y_full, alpha = 1, lambda = best_lambda)
+
 # Prediction based on the test set features
-y2 <- predict(best_model, s = best_lambda, newx = x2)
+y_predicted <- predict(best_model, s = best_lambda, newx = x2)
 
-### Prediction as a dataframe
-y2_df <- data.frame(track.name = test_X$track.name, track.popularity = y2)
-colnames(y2_df) <- c('track.name','track.popularity')
+# Create a dataframe of the predictions
+y_pred_df <- data.frame(track.name = test_X2$track.name, track.popularity = y_predicted)
+colnames(y_pred_df) <- c('track.name','track.popularity')
 
-view(y2_df)
+# View the predictions
+view(y_pred_df)
 
-## Save y2_df as "prediction_lasso"
-save(y2_df, file = "prediction_lasso.RData")
+# Save the predictions as "prediction_lasso"
+save(y_pred_df, file = "prediction_lasso.RData")
+
 
 ##################
 ## Linear model ##
 ##################
-lm_model <- lm(training_y ~., data = train_X)
-predictions_lm <- predict(lm_model, val_X)
-mae_lm <- sum(abs(predictions_lm - validation_y))/nrow(val_X) * std[[10]]
-mae_lm
+
+## Linear Regression Model
+lm_model <- lm(y ~ ., data = as.data.frame(x))
+
+# Predict on validation set
+val_y_pred <- predict(lm_model, newdata = as.data.frame(x1))
+
+# Calculate SST and SSE
+sst <- sum((y1 - mean(y1))^2)
+sse <- sum((val_y_pred - y1)^2)
+
+# Calculate R-Squared
+rsq <- 1 - sse/sst
+rsq # 0.2552685
+
+# Calculate RMSE
+RMSE <- sqrt(mean((val_y_pred - y1)^2))
+RMSE # 9.072668
+
+# Combine the training and validation sets
+x_full <- rbind(x, x1)
+y_full <- c(y, y1)
+
+# Train the model on the full dataset
+lm_model <- lm(y_full ~ ., data = as.data.frame(x_full))
+
+# Predict on test set
+test_y_pred <- predict(lm_model, newdata = as.data.frame(x2) )
+
+# Combine predictions with track names into a dataframe
+prediction_lm <- data.frame(track.name = test_X_encode$track.name, track.popularity = test_y_pred)
+
+# Save predictions as "prediction_lm"
+save(prediction_lm, file = "prediction_lm.RData")
 
 ################
 ## XGBoosting ##
 ################
 
+## XGBoost Model
 library(xgboost)
 
-## Train on training set, predict on validation set
-xgb_model_test <- xgboost(data = as.matrix(train_X), label = as.matrix(training_y),
-                     max.depth = 4, nthread = 8, nrounds = 200, eval_metric = "mae")
+# Convert data to DMatrix format
+dtrain <- xgb.DMatrix(data = as.matrix(x), label = y)
+dval <- xgb.DMatrix(data = as.matrix(x1), label = y1)
+dtest <- xgb.DMatrix(data = as.matrix(x2))
 
-predictions_XGBoost_test <- predict(xgb_model_test, as.matrix(validation_X))
-mae_XGBoost_test <- sum(abs(predictions - validation_y))/nrow(validation_X) * std[[10]]
-mae_XGBoost_test
+# Set parameters
+params <- list(
+  objective = "reg:squarederror",
+  eta = 0.1,
+  max_depth = 6,
+  subsample = 0.8,
+  colsample_bytree = 0.8
+)
 
-## Retrain on training + validation set, predict on test set
-xgb_model_full <- xgboost(data = as.matrix(train_val_X), label = as.matrix(train_val_y),
-                     max.depth = 4, nthread = 8, nrounds = 200, eval_metric = "mae")
+# Train model
+xgb_model <- xgb.train(
+  params = params,
+  data = dtrain,
+  nrounds = 1000,
+  early_stopping_rounds = 10,
+  watchlist = list(train = dtrain, val = dval),
+  verbose = FALSE
+)
 
-predictions_XGBoost_full <- predict(xgb_model_full, as.matrix(train_val_y))
-mae_XGBoost_full <- sum(abs(predictions - train_val_y))/nrow(train_val_X) * std[[10]]
-mae_XGBoost_full
+# Predict on validation set
+val_y_pred <- predict(xgb_model, newdata = as.matrix(x1))
+
+# Calculate SST and SSE
+sst <- sum((y1 - mean(y1))^2)
+sse <- sum((val_y_pred - y1)^2)
+
+# Calculate R-Squared
+rsq <- 1 - sse/sst
+rsq # 0.605818
+
+# Calculate RMSE
+RMSE <- sqrt(mean((val_y_pred - y1)^2))
+RMSE # 6.600602
+
+# Combine training and validation sets
+train_val_X <- rbind(x, x1)
+train_val_y <- c(y, y1)
+
+# Convert data to DMatrix format
+dtrain <- xgb.DMatrix(data = as.matrix(train_val_X), label = train_val_y)
+
+# Set parameters
+params <- list(
+  objective = "reg:squarederror",
+  eta = 0.1,
+  max_depth = 6,
+  subsample = 0.8,
+  colsample_bytree = 0.8
+)
+
+# Train model
+xgb_model <- xgb.train(
+  params = params,
+  data = dtrain,
+  nrounds = 1000,
+  verbose = FALSE
+)
+
+# Predict on test set
+test_y_pred <- predict(xgb_model, newdata = as.matrix(x2))
+
+# Combine predictions with track names into a dataframe
+prediction_xgb <- data.frame(track.name = test_X_encode$track.name, track.popularity = test_y_pred)
+
+# Save predictions as "prediction_xgb"
+save(prediction_xgb, file = "prediction_xgb.RData")
 
 ###################
 ## Random Forest ##
 ###################
 
-# Set training parameters
-control <- trainControl(method="repeatedcv", number=10, repeats=3)
-seed <- 7
-metric <- "mae"
+## Random Forest Model
+library(randomForest)
 
-# Set seed for reproducibility
-set.seed(7)
+# Train model
+rf_model <- randomForest(
+  x = x,
+  y = y,
+  ntree = 1000,
+  mtry = sqrt(ncol(x)),
+  importance = TRUE,
+  na.action = na.roughfix
+)
 
-# Determine number of variables to be considered per split
-mtry <- sqrt(ncol(train_val_basetable))
+# Predict on validation set
+val_y_pred <- predict(rf_model, newdata = x1)
 
-# Create tuning grid for random forest
-tunegrid <- expand.grid(.mtry=mtry)
+# Calculate SST and SSE
+sst <- sum((y1 - mean(y1))^2)
+sse <- sum((val_y_pred - y1)^2)
 
-# Train random forest model with training and validation data
-rf_model <- train(training_y~., data=training_X, method="rf", metric=metric, tuneGrid=tunegrid, trControl=control)
+# Calculate R-Squared
+rsq <- 1 - sse/sst
+rsq # 0.5198914
 
-# Print training results
-print(rf_model)
+# Calculate RMSE
+RMSE <- sqrt(mean((val_y_pred - y1)^2))
+RMSE # 7.284586
 
-# Calculate predictions for validation set and mean absolute error
-predictions <- predict(rf_model, validation_X)
-mae_rf <- sum(abs(predictions - validation_y))/nrow(validation_X) * std[[10]]
-mae_rf
+# Combine training and validation data
+x_trainval <- rbind(x, x1)
+y_trainval <- c(y, y1)
 
+# Train model on training and validation data
+rf_model <- randomForest(
+  x = x_trainval,
+  y = y_trainval,
+  ntree = 1000,
+  mtry = sqrt(ncol(x_trainval)),
+  importance = TRUE,
+  na.action = na.roughfix
+)
 
-##############
-## ........ ##
-##############
+# Predict on test set
+test_y_pred <- predict(rf_model, newdata = x2)
+
+# Combine predictions with track names into a dataframe
+prediction_rf <- data.frame(track.name = test_X_encode$track.name, track.popularity = test_y_pred)
+
+# Save predictions as "prediction_rf"
+save(prediction_rf, file = "prediction_rf.RData")
