@@ -280,18 +280,6 @@ wv <- wv["album", ] - wv["metallica", ] + wv["song", ]
 predict(model, newdata = wv, type = "nearest", top_n = 3)
 
 
-#####################LDA######################
-
-corpus1 <- Corpus(VectorSource(lastcommentseng3$textOriginal))
-dtm1 <- DocumentTermMatrix(corpus1)
-inspect(dtm1)
-
-lda_basic <- LDA(dtm1, 
-                 control = list(seed = 33), 
-                 k = 5)
-
-terms(lda_basic, 20)
-
 ######################################
 #####      Sentimentanalysis     #####
 ######################################
