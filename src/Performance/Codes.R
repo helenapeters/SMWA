@@ -2,19 +2,20 @@
 if (!require("pacman")) install.packages("pacman") ; require("pacman")
 p_load(tidyverse,SnowballC, slam, tm,tictoc,qdap)
 p_load(udpipe,textplot,ggraph,tidytext,wordcloud,wordcloud2)
+p_load(httr,rtweet,tidyverse,textclean,textstem,sentimentr,lexicon,textcat)
 install.packages("tuber")
 install.packages('https')
 library(tuber)
-
-
-###########This part has been done,data could be download from our github############
-
 
 myclientid='24403699099-gvcon4ph9qbvotffogimd6fg932m1t6f.apps.googleusercontent.com'
 clientsecret='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'
 yt_oauth(myclientid,clientsecret,token="")
 
-lastcommentseng1=get_all_comments('1OeC9CGtWcM')
+LuxAeterna=get_all_comments('1OeC9CGtWcM')
+load('SeventyTwoSeasons.RData')
+lastcommentseng2 <- head(LuxAeterna,2000)
+lastcommentseng2 <- head(IfDarknessHadASon,2000)
+LuxAeterna2 <- head(LuxAeterna,2000)
 
 #get a list of videos from a specific channel
 a <- list_channel_resources(filter = c(channel_id = "UCbulh9WdLtEXiooRcYK7SWw"), part="contentDetails")
@@ -38,19 +39,14 @@ res_df <- do.call(rbind, lapply(res, data.frame))
 
 head(res_df)
 
-
-###########These above has been done,data could be download from our github############
-
-load('SeventyTwoSeasons.RData')
-
-lastcommentseng2 <- head(lastcommentseng1,2000)
-
 # Load the required libraries
 library(tm)
 library(SnowballC)
 
-p_load(httr,rtweet,tidyverse,textclean,textstem,sentimentr,lexicon,textcat)
-text <- lastcommentseng2
+
+
+
+text <- LuxAeterna
 text <- text %>% 
   pull(textOriginal) %>% 
   str_replace_all("<.*?>", "")
@@ -86,14 +82,14 @@ cleanText <- function(text) {
   return(clean_texts)
 }
 
-text_clean <- cleanText(text_clean)
+text_clean_all <- cleanText(text_clean)
 
 #Finally, apply lemmatization with the textstem package
 #First, you create a dictionary from the text
 #For large corpora you can use built-in dictionaries
-lemma_dictionary_hs <- make_lemma_dictionary(text_clean,
+lemma_dictionary_hs <- make_lemma_dictionary(text_clean_all,
                                              engine = 'hunspell')
-text_final <- lemmatize_strings(text_clean, 
+text_final <- lemmatize_strings(text_clean_all, 
                                 dictionary = lemma_dictionary_hs)
 
 #################
@@ -101,8 +97,8 @@ text_final <- lemmatize_strings(text_clean,
 #################
 
 # Create a document term matrix
-text_df <- tibble(doc= 1:length(text_clean), 
-                  text = text_clean)
+text_df <- tibble(doc= 1:length(text_clean_all), 
+                  text = text_clean_all)
 
 #Next, make a word frequency table
 freq <- text_df %>%
@@ -115,19 +111,26 @@ freq <- text_df %>%
 #Cast dtm from this word count table
 dtm <- freq %>%
   cast_dtm(doc, word, freq)
-
 # Print the top 10 terms
 head(freq, 10)
 
-tdm <- TermDocumentMatrix(Corpus(VectorSource(corpus)))
-m <- as.matrix(tdm)
-v <- sort(rowSums(m),decreasing=TRUE)
+# load libraries
+library(tm)
+
+# import DTM data
+
+# convert DTM to matrix and transpose
+dtm_matrix <- as.matrix(dtm)
+tdm_matrix <- t(dtm_matrix)
+
+v <- sort(rowSums(tdm_matrix),decreasing=TRUE)
 d <- tibble(word = names(v),freq=v) #or: data.frame(word = names(v),freq=v) 
+d <- na.omit(d)
 
 #using the dplyr to delete the meaningless names
 p_load(dplyr)
 library(dplyr)
-d <- d %>% filter(!(word %in% c("metallica", "song",'album')))
+d <- d %>% filter(!(word %in% c("metallica", "song",'album','the','this','and','null','NA')))
 
 wordcloud2(d)
 
@@ -166,7 +169,6 @@ adj_mat <- create_adjacency_matrix(dtm)
 adj_mat[[1]][1:5,1:5]
 
 set.seed(1)
-#run this multiple times until you are satisfied (see lecture 1 to know why this changes with each execution)
 
 #Again make a function to make plotting easier
 plot_network <- function(object){
@@ -224,7 +226,7 @@ for (i in 2:10) {
 topicmodel <- LDA(x = dtm, k = K, control = list(seed = 1234))
 
 (topic_term <- tidy(topicmodel, matrix = 'beta'))
-
+topic_term <- na.omit(top_terms)
 top_terms <- topic_term %>%
   group_by(topic) %>%
   top_n(10, beta) %>%
@@ -257,7 +259,7 @@ topic_term %>%
 p_load(word2vec,text2vec,Rtsne,scales,ggrepel,tidyverse,tm)
 
 
-reviews <- str_to_lower(text_clean)
+reviews <- str_to_lower(text_clean_all)
 
 set.seed(1234)
 model <- word2vec(x = reviews, 
@@ -296,13 +298,6 @@ terms(lda_basic, 20)
 
 p_load(httr,rtweet,tidyverse,textclean,textstem,sentimentr,lexicon,textcat)
 
-#Finally, apply lemmatization with the textstem package
-#First, you create a dictionary from the text
-#For large corpora you can use built-in dictionaries
-lemma_dictionary_hs <- make_lemma_dictionary(text_clean,
-                                             engine = 'hunspell')
-text_final <- lemmatize_strings(text_clean, 
-                                dictionary = lemma_dictionary_hs)
 
 #Extract sentiment
 sentiment <- text_final %>% 
@@ -329,10 +324,10 @@ dictionary <- dictionary %>%
 dictionary
 p_load(skimr)
 skim(dictionary)
-text1 <- lastcommentseng2 %>% 
+text1 <- LuxAeterna %>% 
   pull(textOriginal) %>% 
   str_replace_all("<.*?>", "")
-created <- lastcommentseng3 %>% pull(publishedAt)
+created <- LuxAeterna %>% pull(publishedAt)
 
 #Focus on English
 p_load(textcat)
@@ -397,24 +392,25 @@ head(time)
 time <- na.omit(time)
 
 #get minutes and hour for commentss
+breaksday <- date(time)
 breakshour <- hour(time)
 breaksmin <- minute(time)
-
+head(breaksday)
 #Compute mean per hour and minute
 scores <- tibble(scorecomments,
-                 hourminute =  paste(breakshour, breaksmin, sep = ":"))
+                 dayhour =  paste(breaksday, sep = ""))
 scores <- scores %>% 
-  group_by(hourminute) %>% 
+  group_by(dayhour) %>% 
   summarise(sentiment=mean(scorecomments))
 
 lim <- max(abs(scores$sentiment))
 
 #Plot sentiment by time
-ggplot(scores, aes(y = sentiment, x = hourminute, group = 1)) +
+ggplot(scores, aes(y = sentiment, x = dayhour, group = 1)) +
   geom_line() +
   geom_hline(yintercept = 0, col = "red") +
   ylim(c(-lim,lim)) +
-  labs( y = "Valence", x = "Time (hour:minute)",
-        title = "Sentiment per hour and minute"
-  ) 
+  labs( y = "sentiments", x = "Time (date)",
+        title = "Sentiment per day and hour"
+  )
 
