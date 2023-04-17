@@ -13,9 +13,6 @@ yt_oauth(myclientid,clientsecret,token="")
 
 LuxAeterna=get_all_comments('1OeC9CGtWcM')
 load('SeventyTwoSeasons.RData')
-lastcommentseng2 <- head(LuxAeterna,2000)
-lastcommentseng2 <- head(IfDarknessHadASon,2000)
-LuxAeterna2 <- head(LuxAeterna,2000)
 
 #get a list of videos from a specific channel
 a <- list_channel_resources(filter = c(channel_id = "UCbulh9WdLtEXiooRcYK7SWw"), part="contentDetails")
@@ -111,13 +108,9 @@ freq <- text_df %>%
 #Cast dtm from this word count table
 dtm <- freq %>%
   cast_dtm(doc, word, freq)
-# Print the top 10 terms
-head(freq, 10)
 
 # load libraries
 library(tm)
-
-# import DTM data
 
 # convert DTM to matrix and transpose
 dtm_matrix <- as.matrix(dtm)
@@ -126,6 +119,9 @@ tdm_matrix <- t(dtm_matrix)
 v <- sort(rowSums(tdm_matrix),decreasing=TRUE)
 d <- tibble(word = names(v),freq=v) #or: data.frame(word = names(v),freq=v) 
 d <- na.omit(d)
+
+#see the top 10 freq
+head(d,10)
 
 #using the dplyr to delete the meaningless names
 p_load(dplyr)
