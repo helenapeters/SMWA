@@ -132,7 +132,7 @@ load("net.RData")
 ## Calculate the degree of all nodes in the network
 degree_of_all <- degree(net, gmode = "graph")
 
-## Extract the degree of only Orvaline her followers
+## Extract the degree of only Dirk Van den Poel his followers
 followers_idx <- match(tolower(firstdegree$username), tolower(colnames(A)))
 fol_degree <- degree_of_all[followers_idx] #has a lot of NA values
 
