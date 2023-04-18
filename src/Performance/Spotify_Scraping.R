@@ -6,17 +6,17 @@ devtools::install_github('charlie86/spotifyr')
 install.packages('spotifyr')
 library(spotifyr)
 library(tidyverse)
-library(knitr) #will be used to make tables later#
-
+library(knitr) 
 install.packages('ggjoy')
 install.packages("ggplot2", dependencies = TRUE)
-
-library(spotifyr)
-library(ggjoy)     # useful for plot
-library(ggplot2)   # useful for plot
-library(tidyverse) # makes possible the use of %>%
-library(knitr)     # library to appear data results in a better way
+library(ggjoy)     
+library(ggplot2)  
 library(lubridate)
+install.packages('ggridges')
+library(ggridges)
+install.packages('kableExtra')
+library(kableExtra)
+
 
 ## Authentication ##
 
@@ -26,13 +26,6 @@ Sys.setenv(SPOTIFY_CLIENT_SECRET = '8d20402514664db2ae8b526629325fed')
 access_token <- get_spotify_access_token()
 
 ## Test to see authentication worked ##
-library(spotifyr)
-
-library(tidyverse)
-library(knitr)
-library(lubridate)
-install.packages('ggridges')
-library(ggridges)
 
 get_my_recently_played(limit = 5) %>% 
   mutate(artist.name = map_chr(track.artists, function(x) x$name[1]),
@@ -47,10 +40,7 @@ get_my_recently_played(limit = 5) %>%
 
 metallica <- get_artist_audio_features('metallica')
 
-## 2. make a subset with their original numbers to avoid duplicates, live versions etc
-
-## following albums still need to be included: 
-## new album (72 seasons), Hardwired...To Self-Destruct, Kill'Em All(remasterd)
+## 2. Data cleaning by removing duplicates and adjusting wrong information
 
 
 metallica2 <- subset(metallica, metallica$album_name %in% c('Master Of Puppets (Remastered)', 
@@ -62,41 +52,59 @@ metallica2 <- subset(metallica, metallica$album_name %in% c('Master Of Puppets (
                                                              'St. Anger',
                                                              'Death Magnetic',
                                                              'Lulu',
-                                                             'Hardwired...To Self-Destruct') )
+                                                             'Hardwired…To Self-Destruct',
+                                                            '72 Seasons'
+                                                             ) )
+metallica_clean <- metallica2[!duplicated(metallica2$track_name), ]
 
-## 3. find our artist's 5  most joyable, danceable, loud & energetic songs
-joy <- metallica2
+metallica_clean$album_release_year[metallica_clean$album_name == 'Metallica (Remastered 2021)'] <- 1991
+
+ls(metallica_clean)
+
+## 3. find our artist's 5  most joyable, fastest, danceable & energetic songs
+joy <- metallica_clean
 joy %>% 
   arrange(-valence) %>% 
-  select(track_name, valence) %>% 
+  select(track_name, album_name, valence) %>% 
   head(5) %>% 
-  kable()
+  kable() %>% 
+  kable_styling("striped", full_width = F, position = "left") %>% 
+  row_spec(row = c(1), color = "black",bold = TRUE)
 
-dance <- metallica2
+dance <- metallica_clean
 dance %>% 
   arrange(-danceability) %>% 
-  select(track_name, danceability) %>% 
+  select(track_name, album_name, danceability) %>% 
   head(5) %>% 
-  kable()
+  kable() %>% 
+  kable_styling("striped", full_width = F, position = "left") %>% 
+  row_spec(row = c(1), color = "black",bold = TRUE)
 
-loud <- metallica2
-loud %>% 
-  arrange(-loudness) %>% 
-  select(track_name, loudness) %>% 
+tempo <- metallica_clean
+tempo %>% 
+  arrange(-tempo) %>% 
+  select(track_name, album_name, tempo) %>% 
   head(5) %>% 
-  kable() 
+  kable() %>% 
+  kable_styling("striped", full_width = F, position = "left") %>% 
+  row_spec(row = c(1), color = "black",bold = TRUE)
 
-energy <- metallica2
+energy <- metallica_clean
 energy %>% 
   arrange(-energy) %>% 
-  mutate(duration_min = duration_ms /1000) %>%
-  select(track_name, energy) %>% 
+  select(track_name, album_name, energy) %>% 
   head(5) %>% 
-  kable() 
+  kable() %>% 
+  kable_styling("striped", full_width = F, position = "left") %>% 
+  row_spec(row = c(1), color = "black",bold = TRUE)
 
-## 4.1 mean variables per album
 
-Var1 <- metallica2 %>%
+
+## compare albums and finding trends
+
+## 5.1 mean variables per album
+
+Var1 <- metallica_clean %>%
   group_by(album_name) %>%
   summarise(year = mean(album_release_year),
             tracks = n(),
@@ -109,13 +117,8 @@ Var1 <- metallica2 %>%
   arrange(year) 
 Var1
 
-## 4.2 plot all the mean variables
+## 5.2 plot all the mean variables in chronological order
 
-ggplot(Var1) +
-  geom_line(aes(year, mean_duration), size = 1, color = "darkgrey") +
-  geom_point(aes(year, mean_duration, fill = reorder(album_name, year)), size = 4, shape = 21) +
-  labs(x = "Year", y = " Duration in sec", fill = "Album") +
-  theme(text = element_text(size = 14))
 
 ggplot(Var1) +
   geom_line(aes(year, mean_danceability), size = 1, color = "darkgrey") +
@@ -138,24 +141,34 @@ ggplot(Var1) +
   labs(x = "Year", y = " mean_energy", fill = "Album") +
   theme(text = element_text(size = 14))
 
-## 5 plot the distributions per ablum
-ggplot(metallica2, aes(x = valence, y = album_name)) + 
-  geom_joy() +
-  theme_joy() +
-  ggtitle(paste0("Joyplot"), subtitle = "Based on valence pulled from Spotify's Web API with spotifyr")
+ggplot(Var1) +
+  geom_line(aes(year, mean_valence), size = 1, color = "darkgrey") +
+  geom_point(aes(year, mean_valence, fill = reorder(album_name, year)), size = 4, shape = 21) +
+  labs(x = "Year", y = " mean_valence", fill = "Album") +
+  theme(text = element_text(size = 14))
 
 
-## plot popularity per songs
+## 6 popularity
 
-## 1.
-playlist <- get_playlist_tracks('37i9dQZF1DZ06evO1sJmec')
-##https://open.spotify.com/playlist/37i9dQZF1DZ06evO1sJmec?si=b41286fb8a574a1f
+## 6.1 making a new dataframe that has the variable popularity``
 
-##2 
-ggplot(playlist, aes(track.popularity, reorder(track.name, track.popularity))) +
+
+metallica_playlist <- get_playlist_tracks('75B0sP0qhjbzIVidWtg6GI')
+features <- get_track_audio_features(metallica_playlist$track.id)
+metallicap_pop <- metallica_playlist %>%
+  left_join(features, by=c('track.id' = 'id'))
+`
+## 6.2 checking the popularity of the tracks
+
+ggplot(metallicap_pop, aes(track.popularity, reorder(track.name, track.popularity))) +
   labs(x = "Popularity", y = "Songs") +
   geom_point(size = 2, shape = 21)
 
+## 6.3 plotting population density
+pop_density <- density(metallicap_pop$track.popularity)
+plot(pop_density, main="Popularity Distribution",
+xlab="Popularity",
+ylab="Density")
 
 
 
@@ -163,19 +176,24 @@ ggplot(playlist, aes(track.popularity, reorder(track.name, track.popularity))) +
 
 
 
+## Extra: creating the datasets for predictive part
+
+Metallica_old_album  <- get_playlist_tracks('75B0sP0qhjbzIVidWtg6GI')
+features2 <- get_track_audio_features(Metallica_old_album$track.id)
+Metallica_NewAlbum <- Metallica_old_album %>%
+  left_join(features2, by=c('track.id' = 'id'))
 
 
+Metallica_newalbum  <- get_playlist_tracks('78GQOH7x89VsH8dIzJyCB7')
+features3 <- get_track_audio_features(Metallica_new_album$track.id)
+Metallica_NewAlbum <- Metallica_new_album %>%
+  left_join(features2, by=c('track.id' = 'id'))
 
-## to do?
 
-##make wordgraph with the most used keys?
+## Save the data
+save(Metallica_NewAlbum, file = "Metallica_NewAlbum.RData") ## this will later be the test set
+save(Metallica_OldAlbums, file = "metallica_OldAlbums.RData") ## this will later be the training set
 
-
-
- metallica2 %>%
- group_by(album_name) %>%
-  ggplot(aes(album_name, danceability)) + geom_col() + coord_flip()
-  
 
 
 
