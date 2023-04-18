@@ -1,4 +1,5 @@
-#scraping the comments from specific youtube videos
+# Scraping the comments from specific youtube videos
+# First install the needed packages
 if (!require("pacman")) install.packages("pacman") ; require("pacman")
 p_load(tidyverse,SnowballC, slam, tm,tictoc,qdap)
 p_load(udpipe,textplot,ggraph,tidytext,wordcloud,wordcloud2)
@@ -11,10 +12,8 @@ myclientid='24403699099-gvcon4ph9qbvotffogimd6fg932m1t6f.apps.googleusercontent.
 clientsecret='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'
 yt_oauth(myclientid,clientsecret,token="")
 
-LuxAeterna=get_all_comments('1OeC9CGtWcM')
-load('SeventyTwoSeasons.RData')
 
-#get a list of videos from a specific channel
+# Get a list of videos from a specific channel
 a <- list_channel_resources(filter = c(channel_id = "UCbulh9WdLtEXiooRcYK7SWw"), part="contentDetails")
 # Uploaded playlists:
 playlist_id <- a$items[[1]]$contentDetails$relatedPlaylists$uploads
@@ -40,18 +39,24 @@ head(res_df)
 library(tm)
 library(SnowballC)
 
+# Load the Youtube-comment files of the 3 songs
+load("~/SMWA/src/Performance/YoutubeData/IfDarknessHadASon.RData")
+load("~/SMWA/src/Performance/YoutubeData/SeventyTwoSeasons.RData")
+load("~/SMWA/src/Performance/YoutubeData/LuxAeterna.RData")
 
 
+# The code is the same for the 3 songs, just change "IfDarknessHadAson" into "LuxAeterna" or "lastcommentseng1".
+# WARNING: for "72 seasons", you have to type in "lastcommentseng1" instead of "72Seasons"
 
-text <- LuxAeterna
+text <- IfDarknessHadASon
 text <- text %>% 
   pull(textOriginal) %>% 
   str_replace_all("<.*?>", "")
 lang <- textcat(text)
 text <- text[lang == "english"]
 
-#First, use the textclean package to detect emojis and emoticons
-#Not all emojis will be detected, so we will later have to delete the remaining ones
+# First, use the textclean package to detect emojis and emoticons
+# Not all emojis will be detected, so we will later have to delete the remaining ones
 
 text_clean <- text %>% 
   replace_emoji() %>% 
@@ -61,7 +66,7 @@ text_clean <- text %>%
   replace_kern() %>% 
   replace_word_elongation()
 
-#Clean the rest of the posts
+# Clean the rest of the posts
 cleanText <- function(text) {
   clean_texts <- text %>%
     str_replace_all("<.*>", "") %>% # remove remainig emojis
@@ -81,9 +86,9 @@ cleanText <- function(text) {
 
 text_clean_all <- cleanText(text_clean)
 
-#Finally, apply lemmatization with the textstem package
-#First, you create a dictionary from the text
-#For large corpora you can use built-in dictionaries
+# Finally, apply lemmatization with the textstem package
+# First, you create a dictionary from the text
+# For large corpora you can use built-in dictionaries
 lemma_dictionary_hs <- make_lemma_dictionary(text_clean_all,
                                              engine = 'hunspell')
 text_final <- lemmatize_strings(text_clean_all, 
@@ -105,7 +110,7 @@ freq <- text_df %>%
   anti_join(stop_words) %>% #Remove also the english ones
   count(doc,word, name = "freq", sort = TRUE)
 
-#Cast dtm from this word count table
+# Cast dtm from this word count table
 dtm <- freq %>%
   cast_dtm(doc, word, freq)
 
@@ -120,10 +125,10 @@ v <- sort(rowSums(tdm_matrix),decreasing=TRUE)
 d <- tibble(word = names(v),freq=v) #or: data.frame(word = names(v),freq=v) 
 d <- na.omit(d)
 
-#see the top 10 freq
+# see the top 10 freq
 head(d,10)
 
-#using the dplyr to delete the meaningless names
+# using the dplyr to delete the meaningless names
 p_load(dplyr)
 library(dplyr)
 d <- d %>% filter(!(word %in% c("metallica", "song",'album','the','this','and','null','NA')))
@@ -134,7 +139,7 @@ wordcloud2(d)
 ### WORDGRAPH ###
 #################
 
-#Make a function to create the adjacency matrix
+# Make a function to create the adjacency matrix
 create_adjacency_matrix <- function(object, probs=0.99){
   
   #object= output from function create_document_term_matrix (a document by term matrix)
@@ -161,12 +166,12 @@ create_adjacency_matrix <- function(object, probs=0.99){
 }
 
 adj_mat <- create_adjacency_matrix(dtm)
-#Look at the result
+# Look at the result
 adj_mat[[1]][1:5,1:5]
 
 set.seed(1)
 
-#Again make a function to make plotting easier
+# Again make a function to make plotting easier
 plot_network <- function(object){
   #object: output from the create_adjacency_matrix function
   
@@ -203,6 +208,59 @@ plot_network(adj_mat)
 
 p_load(wordcloud, tm, topicmodels, topicdoc, tidytext, textclean)
 
+# "text" should be updated with the song you want to analyze,
+# because we will have to create a dtm
+# Choose between IfDarknessHadASon, LuxAeterna or lastcommentseng1 (=72 seasons)
+
+text <- lastcommentseng1
+text <- text %>% 
+  pull(textOriginal) %>% 
+  str_replace_all("<.*?>", "")
+lang <- textcat(text)
+text <- text[lang == "english"]
+
+
+text_clean <- text %>% 
+  replace_emoji() %>% 
+  replace_emoticon() %>% 
+  replace_contraction() %>%
+  replace_internet_slang() %>% 
+  replace_kern() %>% 
+  replace_word_elongation()
+
+cleanText <- function(text) {
+  clean_texts <- text %>%
+    str_replace_all("<.*>", "") %>% # remove remainig emojis
+    str_replace_all("&amp;", "") %>% # remove &
+    str_replace_all("(RT|via)((?:\\b\\W*@\\w+)+)", "") %>% # remove retweet entities
+    str_replace_all("@\\w+", "") %>% # remove at people replace_at() also works
+    #str_replace_all("(?:\\s*#\\w+)+\\s*$", "") %>% #remove hashtags in total
+    str_replace_all('#', "") %>% #remove only hashtag 
+    str_replace_all("[[:punct:]]", "") %>% # remove punctuation
+    str_replace_all("[[:digit:]]", "") %>% # remove digits
+    str_replace_all("http\\w+", "") %>% # remove html links replace_html() also works
+    str_replace_all("[ \t]{2,}", " ") %>% # remove unnecessary spaces
+    str_replace_all("^\\s+|\\s+$", "") %>% # remove unnecessary spaces
+    str_to_lower()
+  return(clean_texts)
+}
+
+text_clean_all <- cleanText(text_clean)
+
+text_df <- tibble(doc= 1:length(text_clean_all), 
+                  text = text_clean_all)
+
+freq <- text_df %>%
+  unnest_tokens(word, text) %>% #tokenize (split documents into terms)
+  anti_join(tibble(word = stopwords('en'),
+                   lexixon = 'tm')) %>% #Remove stopwords dutch stopworks
+  anti_join(stop_words) %>% #Remove also the english ones
+  count(doc,word, name = "freq", sort = TRUE)
+
+# Update dtm
+dtm <- freq %>%
+  cast_dtm(doc, word, freq)
+
 ldas <- list()
 j <- 0
 for (i in 2:10) {
@@ -222,12 +280,11 @@ for (i in 2:10) {
 topicmodel <- LDA(x = dtm, k = K, control = list(seed = 1234))
 
 (topic_term <- tidy(topicmodel, matrix = 'beta'))
-topic_term <- na.omit(top_terms)
-top_terms <- topic_term %>%
+top_terms <- na.omit(topic_term %>%
   group_by(topic) %>%
   top_n(10, beta) %>%
   ungroup() %>%
-  arrange(topic, desc(beta))
+  arrange(topic, desc(beta)))
 top_terms
 
 #Plot the top terms per topic
@@ -282,45 +339,102 @@ predict(model, newdata = wv, type = "nearest", top_n = 3)
 
 p_load(httr,rtweet,tidyverse,textclean,textstem,sentimentr,lexicon,textcat)
 
+# These steps are already written somewhere above in this document
+# but you can find them below again if needed
+# Make sure that "text" is associated with the correct song; if not,
+# you can change "text" with the code at the top of the document
 
-#Extract sentiment
+
+# clean text
+text_clean <- text %>% 
+  replace_emoji() %>% 
+  replace_emoticon() %>% 
+  replace_contraction() %>%
+  replace_internet_slang() %>% 
+  replace_kern() %>% 
+  replace_word_elongation()
+
+cleanText <- function(text) {
+  clean_texts <- text %>%
+    str_replace_all("<.*>", "") %>%                         # remove remainig emojis
+    str_replace_all("&amp;", "") %>%                        # remove &
+    str_replace_all("(RT|via)((?:\\b\\W*@\\w+)+)", "") %>%  # remove retweet entities
+    str_replace_all("@\\w+", "") %>%                        # remove @ people, replace_tag() also works
+    str_replace_all('#', "") %>%                            #remove only hashtag, replace_hash also works
+    str_replace_all("[[:punct:]]", "") %>%                  # remove punctuation
+    str_replace_all("[[:digit:]]", "") %>%                  # remove digits
+    str_replace_all("http\\w+", "") %>%                     # remove html links replace_html() also works
+    str_replace_all("[ \t]{2,}", " ") %>%                   # remove unnecessary spaces
+    str_replace_all("^\\s+|\\s+$", "") %>%                  # remove unnecessary spaces
+    str_trim() %>% 
+    str_to_lower()
+  return(clean_texts)
+}
+text_clean <- cleanText(text_clean)
+# Lemmatization 
+lemma_dictionary_hs <- make_lemma_dictionary(text_clean, engine = 'hunspell')
+text_final <- lemmatize_strings(text_clean, dictionary = lemma_dictionary_hs)
+# Extract sentiment
 sentiment <- text_final %>% 
   get_sentences() %>% 
   sentiment_by()
-
-#Check the commentss and sentiment score
+# Highlight sentences by sentiment polarity (positive = green; negative = pink) 
+# as an html file 
 sentiment %>% highlight()
 
-#read in dictionary
-#read_csv is an optimized read.csv function from the tidyverse
-dictionary <- read_csv("dictionary.csv")
-#Let's have a look
-dictionary
-#VALENCE: 1= sad, 9= happy
-#AROUSAL: 1=calm, 9=excited
-#DOMINANCE: 1=controlled, 9=in control
 
-#Now recode all columns so that neutral equals 0, -4= negative, 4=positive
+
+#======================LEXICON BASED APPROACH==========================
+
+# Read in dictionary
+# read_csv is an optimized read.csv function from the tidyverse
+dictionary <- read_csv("dictionary.csv")
+# Let's have a look
+dictionary
+# VALENCE: 1= sad, 9= happy
+# AROUSAL: 1=calm, 9=excited
+# DOMINANCE: 1=controlled, 9=in control
+
+# Now recode all columns so that neutral equals 0, -4= negative, 4=positive
 dictionary <- dictionary %>% 
   mutate(across(where(is.numeric),function(x) x-5))
 
-#Let's have a look at the dictionary
+# Let's have a look at the dictionary
 dictionary
 p_load(skimr)
 skim(dictionary)
-text1 <- LuxAeterna %>% 
+
+# WARNING: use the "text1" of the song you want to analyze
+# WARNING: we selected the comments between March 29 and April 7 to get clearer
+# and uniform graphs, so that means we are going to scrape 336 comments from
+# IfDarknessHadASon
+text1 <- head(IfDarknessHadASon, 336) %>% 
   pull(textOriginal) %>% 
   str_replace_all("<.*?>", "")
-created <- LuxAeterna %>% pull(publishedAt)
+created <- head(IfDarknessHadASon, 336) %>% pull(publishedAt)
 
-#Focus on English
+# For Lux Aeterna, there were 140 comments between March 29 and April 7
+text1 <- head(LuxAeterna, 140) %>% 
+  pull(textOriginal) %>% 
+  str_replace_all("<.*?>", "")
+created <- head(LuxAeterna, 140) %>% pull(publishedAt)
+
+# As we only have comments for 72 seasons since March 29, we can use all the
+# comments we scraped on April 7
+text1 <- lastcommentseng1 %>% 
+  pull(textOriginal) %>% 
+  str_replace_all("<.*?>", "")
+created <- lastcommentseng1 %>% pull(publishedAt)
+
+
+# Focus on English
 p_load(textcat)
 lang <- textcat(text1)
 text1 <- text1[lang == "english"]
 created <- created[lang == "english"]
 
 
-#Also delete the ones for which we don't have a time stamp
+# Also delete the ones for which we don't have a time stamp
 text1 <- text1[!is.na(created)]
 
 
@@ -358,29 +472,29 @@ mean(scorecomments)
 sd(scorecomments)
 hist(scorecomments)
 
-#lets look at the sentiment score and the comments content
+# Let's look at the sentiment score and the comments content
 bind_cols(scorecomments,text1) %>% View()
 
 
-#Group in minutes and take the average per minute
-#handle time zone
+# Group in minutes and take the average per minute
+# handle time zone
 p_load(lubridate)
-#format is "%Y-%m-%d %H:%M:%S", so use ymd_hms option of lubridate
-#more info on https://lubridate.tidyverse.org/ 
+# format is "%Y-%m-%d %H:%M:%S", so use ymd_hms option of lubridate
+# more info on https://lubridate.tidyverse.org/ 
 time <- ymd_hms(created, format="%Y-%m-%d %H:%M:%S",tz="UTC")
 attributes(time)$tzone <- "CET"
-#Look at the result and compare with original
+# Look at the result and compare with original
 head(created)
 head(time)
-#Remove the trailing NA value
+# Remove the trailing NA value
 time <- na.omit(time)
 
-#get minutes and hour for commentss
+# Get minutes and hour for comments
 breaksday <- date(time)
 breakshour <- hour(time)
 breaksmin <- minute(time)
 head(breaksday)
-#Compute mean per hour and minute
+# Compute mean per hour and minute
 scores <- tibble(scorecomments,
                  dayhour =  paste(breaksday, sep = ""))
 scores <- scores %>% 
@@ -389,7 +503,7 @@ scores <- scores %>%
 
 lim <- max(abs(scores$sentiment))
 
-#Plot sentiment by time
+# Plot sentiment by time
 ggplot(scores, aes(y = sentiment, x = dayhour, group = 1)) +
   geom_line() +
   geom_hline(yintercept = 0, col = "red") +
@@ -397,4 +511,63 @@ ggplot(scores, aes(y = sentiment, x = dayhour, group = 1)) +
   labs( y = "sentiments", x = "Time (date)",
         title = "Sentiment per day and hour"
   )
+
+#==================== SENTIMENTR===========================
+
+p_load(tidyverse,textclean, textstem, sentimentr, lexicon)
+
+# Make sure that "text" is associated with the correct song; if not,
+# you can change "text" with the code at the top of the document
+
+# sentiment per sentence
+text %>% get_sentences() %>% sentiment()
+# the average sentiment per row 
+sentiment_row_avg <- text %>% get_sentences() %>% sentiment_by(averaging.function = average_weighted_mixed_sentiment)
+# the mean of the sentiment per row
+sentiment_row_mean <- text %>% get_sentences() %>% sentiment_by(averaging.function = average_mean)
+# the sentiment per sentence with emoticons and word elongations removed
+sentiment_sentence_cleaned <- text %>% replace_emoticon() %>% replace_word_elongation() %>% get_sentences() %>% sentiment()
+
+#=================================== VADER================================
+
+p_load(vader)
+text <- iconv(text, from = "latin1", to = "ascii", sub = "byte")
+
+# These steps are already written somewhere above in this document, but you can find them below again if needed
+# Make sure that "text" is associated with the correct song; if not,
+# you can change "text" with the code at the top of the document
+
+# clean text
+text_clean <- text %>% 
+  replace_emoji() %>% 
+  replace_emoticon() %>% 
+  replace_contraction() %>%
+  replace_internet_slang() %>% 
+  replace_kern() %>% 
+  replace_word_elongation()
+
+cleanText <- function(text) {
+  clean_texts <- text %>%
+    str_replace_all("<.*>", "") %>%                         # remove remainig emojis
+    str_replace_all("&amp;", "") %>%                        # remove &
+    str_replace_all("(RT|via)((?:\\b\\W*@\\w+)+)", "") %>%  # remove retweet entities
+    str_replace_all("@\\w+", "") %>%                        # remove @ people, replace_tag() also works
+    str_replace_all('#', "") %>%                            #remove only hashtag, replace_hash also works
+    str_replace_all("[[:punct:]]", "") %>%                  # remove punctuation
+    str_replace_all("[[:digit:]]", "") %>%                  # remove digits
+    str_replace_all("http\\w+", "") %>%                     # remove html links replace_html() also works
+    str_replace_all("[ \t]{2,}", " ") %>%                   # remove unnecessary spaces
+    str_replace_all("^\\s+|\\s+$", "") %>%                  # remove unnecessary spaces
+    str_trim() %>% 
+    str_to_lower()
+  return(clean_texts)
+}
+text_clean <- cleanText(text_clean)
+# Lemmatization 
+lemma_dictionary_hs <- make_lemma_dictionary(text_clean, engine = 'hunspell')
+text_final <- lemmatize_strings(text_clean, dictionary = lemma_dictionary_hs)
+
+# Sentiment analysis with the vader package
+sentiment_vader <- text_final %>% vader_df()
+
 
