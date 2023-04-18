@@ -40,9 +40,9 @@ library(tm)
 library(SnowballC)
 
 # Load the Youtube-comment files of the 3 songs
-load("~/SMWA/src/Performance/YoutubeData/IfDarknessHadASon.RData")
-load("~/SMWA/src/Performance/YoutubeData/SeventyTwoSeasons.RData")
-load("~/SMWA/src/Performance/YoutubeData/LuxAeterna.RData")
+load("~/SMWA/src/Performance/YoutubeData/Full Comment Dataframes/IfDarknessHadASonYoutubeComments.RData")
+load("~/SMWA/src/Performance/YoutubeData/Full Comment Dataframes/SeventyTwoSeasonsYoutubeComments.RData")
+load("~/SMWA/src/Performance/YoutubeData/Full Comment Dataframes/LuxAeternaYoutubeComments.Rdata")
 
 
 # The code is the same for the 3 songs, just change "IfDarknessHadAson" into "LuxAeterna" or "lastcommentseng1".
